@@ -1,5 +1,13 @@
 import React from "react";
 import FeatureCard from "../Components/FeatureCard.jsx";
+import GavelIcon from "@mui/icons-material/Gavel";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import TranslateIcon from "@mui/icons-material/Translate";
+import DescriptionIcon from "@mui/icons-material/Description";
+import WarningIcon from "@mui/icons-material/Warning";
+import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
+import HelpIcon from "@mui/icons-material/Help";
+import LoginIcon from "@mui/icons-material/Login";
 
 export default function SinhalaLegalAI() {
   return (
@@ -9,16 +17,20 @@ export default function SinhalaLegalAI() {
         <div className="flex items-center justify-between px-4 py-4 max-w-6xl mx-auto">
           <div className="flex items-center gap-2">
             <div className="bg-primary p-1.5 rounded-lg flex items-center justify-center">
-              <span className="material-symbols-outlined text-white text-[24px]">
-                gavel
-              </span>
+              <GavelIcon style={{ color: "white", fontSize: 24 }} />
             </div>
             <h2 className="text-lg font-bold tracking-tight">Sinhala Legal AI</h2>
           </div>
 
-          <button className="text-primary font-semibold text-base px-2 py-1">
-            Login
-          </button>
+          <button
+  className="text-primary font-semibold text-base px-2 py-1 flex items-center gap-1"
+  style={{
+    background: "linear-gradient(135deg, #2b7cee22 0%, #2b7cee 100%)"
+  }}
+>
+  <LoginIcon fontSize="small" />
+  Login
+</button>
         </div>
       </header>
 
@@ -43,24 +55,24 @@ export default function SinhalaLegalAI() {
             {/* Mobile: stacked | Desktop: grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <FeatureCard
-                icon="upload_file"
+                icon={<CloudUploadIcon fontSize="large" />}
                 title="Upload Document"
                 description="Easily upload your PDF or image files of legal contracts or letters."
-                previewIcon="cloud_upload"
+                previewIcon={<CloudUploadIcon />}
               />
 
               <FeatureCard
-                icon="translate"
+                icon={<TranslateIcon fontSize="large" />}
                 title="Get Sinhala Summary"
                 description="AI breaks down complex legal jargon into easy-to-read Sinhala summaries."
-                previewIcon="description"
+                previewIcon={<DescriptionIcon />}
               />
 
               <FeatureCard
-                icon="warning"
+                icon={<WarningIcon fontSize="large" />}
                 title="Risk Alerts & Reports"
                 description="Identify potential legal risks and download detailed findings instantly."
-                previewIcon="verified_user"
+                previewIcon={<VerifiedUserIcon />}
               />
             </div>
           </section>

@@ -20,7 +20,7 @@ export default function FeatureCard({ icon, title, description, previewIcon }) {
       <div
         className="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg flex-1 bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
         style={{
-          backgroundImage: "linear-gradient(135deg, #2b7cee22 0%, #2b7cee44 100%)",
+          backgroundImage: "linear-gradient(135deg, #2b7cee22 0%, #2b7cee 100%)"
         }}
       >
         <span className="material-symbols-outlined text-white text-4xl ">
