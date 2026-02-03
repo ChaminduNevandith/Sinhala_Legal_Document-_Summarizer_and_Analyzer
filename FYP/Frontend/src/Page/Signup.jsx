@@ -43,7 +43,7 @@ export default function Signup() {
 
 					<Link
 						to="/login"
-						className="text-primary font-semibold text-base px-2 py-1 flex items-center gap-1"
+						className="text-white font-semibold text-base px-4 py-2 flex items-center gap-1 rounded-[5px]"
 						style={{ background: "linear-gradient(135deg, #2b7cee22 0%, #2b7cee 100%)" }}
 					>
 						<LoginIcon fontSize="small" />
@@ -133,26 +133,6 @@ export default function Signup() {
 					</div>
 				</section>
 			</main>
-
-			{/* Bottom action area */}
-			<footer className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-background-dark/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 px-4 sm:px-6 pt-4 pb-6">
-				<div className="max-w-6xl mx-auto">
-					<div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
-						<Link
-							to="/"
-							className="w-full sm:w-auto sm:min-w-[220px] bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98] text-center"
-						>
-							Home
-						</Link>
-						<Link
-							to="/login"
-							className="w-full sm:w-auto sm:min-w-[220px] bg-white hover:bg-white/90 text-[#1a1a1a] font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98] text-center"
-						>
-							Login
-						</Link>
-					</div>
-				</div>
-			</footer>
 		</div>
 	);
 }

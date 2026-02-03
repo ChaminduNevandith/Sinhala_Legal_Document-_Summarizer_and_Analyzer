@@ -25,7 +25,7 @@ export default function SinhalaLegalAI() {
 
           <Link
             to="/login"
-            className="text-primary font-semibold text-base px-2 py-1 flex items-center gap-1"
+            className="text-white font-semibold text-base px-4 py-2 flex items-center gap-1 rounded-[5px]"
             style={{ background: "linear-gradient(135deg, #2b7cee22 0%, #2b7cee 100%)" }}
           >
             <LoginIcon fontSize="small" />
