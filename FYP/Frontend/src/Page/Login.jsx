@@ -29,24 +29,24 @@ export default function Login() {
 		<div className="dark min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-white flex flex-col">
 			{/* Top Navigation Bar */}
 			<header className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-				<div className="flex items-center justify-between px-4 py-4 max-w-6xl mx-auto">
-					<div className="flex items-center gap-2">
-						<div className="bg-primary p-1.5 rounded-lg flex items-center justify-center">
-							<GavelIcon style={{ color: "white", fontSize: 24 }} />
-						</div>
-						<h2 className="text-lg font-bold tracking-tight">Sinhala Legal AI</h2>
-					</div>
-
-					<Link
-						to="/signup"
-						className="text-primary font-semibold text-base px-2 py-1 flex items-center gap-1"
-						style={{ background: "linear-gradient(135deg, #2b7cee22 0%, #2b7cee 100%)" }}
-					>
-						<LoginIcon fontSize="small" />
-						Signup
-					</Link>
-				</div>
-			</header>
+                    <div className="flex items-center justify-between px-4 py-4 max-w-6xl mx-auto">
+                      <div className="flex items-center gap-2">
+                        <div className="bg-primary p-1.5 rounded-lg flex items-center justify-center">
+                          <GavelIcon style={{ color: "white", fontSize: 24 }} />
+                        </div>
+                        <h2 className="text-lg font-bold tracking-tight">Sinhala Legal AI</h2>
+                      </div>
+            
+                      <Link
+                        to="/login"
+                        className="text-white font-semibold text-base px-4 py-2 flex items-center gap-1 rounded-[5px]"
+                        style={{ background: "linear-gradient(135deg, #2b7cee22 0%, #2b7cee 100%)" }}
+                      >
+                        <LoginIcon fontSize="small" />
+                        Login
+                      </Link>
+                    </div>
+                  </header>
 
 			{/* Main content */}
 			<main className="flex-1 w-full pb-36">
@@ -101,26 +101,6 @@ export default function Login() {
 					</div>
 				</section>
 			</main>
-
-			{/* Bottom action area */}
-			<footer className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-background-dark/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 px-4 sm:px-6 pt-4 pb-6">
-				<div className="max-w-6xl mx-auto">
-					<div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
-						<Link
-							to="/"
-							className="w-full sm:w-auto sm:min-w-[220px] bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98] text-center"
-						>
-							Home
-						</Link>
-						<Link
-							to="/signup"
-							className="w-full sm:w-auto sm:min-w-[220px] bg-white hover:bg-white/90 text-[#1a1a1a] font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98] text-center"
-						>
-							Signup
-						</Link>
-					</div>
-				</div>
-			</footer>
 		</div>
 	);
 }

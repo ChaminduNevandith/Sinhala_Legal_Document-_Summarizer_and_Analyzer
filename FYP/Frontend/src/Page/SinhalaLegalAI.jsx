@@ -8,6 +8,7 @@ import WarningIcon from "@mui/icons-material/Warning";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import HelpIcon from "@mui/icons-material/Help";
 import LoginIcon from "@mui/icons-material/Login";
+import { Link } from "react-router-dom";
 
 export default function SinhalaLegalAI() {
   return (
@@ -22,15 +23,14 @@ export default function SinhalaLegalAI() {
             <h2 className="text-lg font-bold tracking-tight">Sinhala Legal AI</h2>
           </div>
 
-          <button
-  className="text-primary font-semibold text-base px-2 py-1 flex items-center gap-1"
-  style={{
-    background: "linear-gradient(135deg, #2b7cee22 0%, #2b7cee 100%)"
-  }}
->
-  <LoginIcon fontSize="small" />
-  Login
-</button>
+          <Link
+            to="/login"
+            className="text-white font-semibold text-base px-4 py-2 flex items-center gap-1 rounded-[5px]"
+            style={{ background: "linear-gradient(135deg, #2b7cee22 0%, #2b7cee 100%)" }}
+          >
+            <LoginIcon fontSize="small" />
+            Login
+          </Link>
         </div>
       </header>
 
