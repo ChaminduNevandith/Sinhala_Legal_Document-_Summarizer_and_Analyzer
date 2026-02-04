@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import client from "../api/client";
 import * as mammoth from "mammoth/mammoth.browser";
 
 export default function UploadNewDocument() {
@@ -10,6 +11,9 @@ export default function UploadNewDocument() {
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState(""); // for PDFs
   const [docxHtml, setDocxHtml] = useState(""); // for DOCX
+  const [docType, setDocType] = useState("contract");
+  const [queryText, setQueryText] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
 
   const resetPreview = useCallback(() => {
@@ -237,7 +241,7 @@ export default function UploadNewDocument() {
                   </div>
 
                   <div className="relative">
-                    <select className="appearance-none flex h-14 w-full rounded-xl border border-slate-200 bg-white px-4 text-base font-normal outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#3b4554] dark:bg-[#1c2027]">
+                    <select value={docType} onChange={(e) => setDocType(e.target.value)} className="appearance-none flex h-14 w-full rounded-xl border border-slate-200 bg-white px-4 text-base font-normal outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#3b4554] dark:bg-[#1c2027]">
                       <option value="contract">Contract or Agreement</option>
                       <option value="deed">Property Deed / Land Title</option>
                       <option value="notice">Legal Notice</option>
@@ -266,6 +270,8 @@ export default function UploadNewDocument() {
                   <textarea
                     className="min-h-32 w-full rounded-xl border border-slate-200 bg-white p-4 text-base font-normal outline-none transition-all placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#3b4554] dark:bg-[#1c2027] dark:placeholder:text-slate-500"
                     placeholder="e.g. Is there any hidden cost or termination fee?"
+                    value={queryText}
+                    onChange={(e) => setQueryText(e.target.value)}
                   />
                 </div>
               </div>
@@ -288,10 +294,29 @@ export default function UploadNewDocument() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
             <button
               type="button"
-              disabled={!file}
+              disabled={!file || uploading}
+              onClick={async () => {
+                if (!file) return;
+                setUploading(true);
+                setError("");
+                try {
+                  const form = new FormData();
+                  form.append("file", file);
+                  form.append("doc_type", docType);
+                  form.append("query_text", queryText);
+                  await client.post("/api/documents/upload", form, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                  });
+                  navigate("/");
+                } catch (e) {
+                  setError(e?.message || "Upload failed.");
+                } finally {
+                  setUploading(false);
+                }
+              }}
               className="flex h-14 w-full items-center justify-center rounded-xl bg-[#1c2027] text-base font-bold text-white shadow-xl shadow-primary/30 transition-transform active:scale-95 lg:w-auto lg:px-10 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Upload &amp; Analyze
+              {uploading ? "Uploading…" : "Upload & Analyze"}
             </button>
 
             <button
