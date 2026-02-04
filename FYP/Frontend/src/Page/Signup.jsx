@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import GavelIcon from "@mui/icons-material/Gavel";
 import LoginIcon from "@mui/icons-material/Login";
 import { Link, useNavigate } from "react-router-dom";
+import client from "../api/client";
 
 export default function Signup() {
 	const navigate = useNavigate();
@@ -11,8 +12,11 @@ export default function Signup() {
 	const [confirm, setConfirm] = useState("");
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
+	const [loading, setLoading] = useState(false);
 
-	const handleSubmit = (e) => {
+	// API base handled via axios client
+
+	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setError("");
 		setSuccess("");
@@ -20,13 +24,20 @@ export default function Signup() {
 			setError("Passwords do not match.");
 			return;
 		}
-		if (!email || !password) {
+		if (!name || !email || !password) {
 			setError("Please fill all required fields.");
 			return;
 		}
-		// Demo: pretend signup succeeded
-		setSuccess("Account created! You can now sign in.");
-		setTimeout(() => navigate("/login"), 800);
+		try {
+			setLoading(true);
+			await client.post("/api/auth/signup", { name, email, password });
+			setSuccess("Account created! You can now sign in.");
+			setTimeout(() => navigate("/login"), 800);
+		} catch (err) {
+			setError(err?.message || "Network error. Please check your connection.");
+		} finally {
+			setLoading(false);
+		}
 	};
 
 	return (
@@ -120,9 +131,10 @@ export default function Signup() {
 
 							<button
 								type="submit"
-								className="w-full bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+								disabled={loading}
+								className="w-full bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
 							>
-								Create Account
+								{loading ? "Creating..." : "Create Account"}
 							</button>
 
 							<div className="text-center text-sm text-slate-600 dark:text-slate-400">

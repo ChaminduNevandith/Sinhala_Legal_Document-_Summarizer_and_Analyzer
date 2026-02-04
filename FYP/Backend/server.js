@@ -11,6 +11,10 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Routes
+const authRoutes = require("./Routes/Authroutes");
+app.use("/api/auth", authRoutes);
+
 // Initialize DB 
 initDatabase()
   .then(() => console.log("DB connection initialized"))
