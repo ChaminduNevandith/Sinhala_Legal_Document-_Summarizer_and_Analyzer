@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const { initDatabase, query } = require("./DB/db");
 
@@ -7,9 +8,11 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || true
+  origin: process.env.CORS_ORIGIN || true,
+  credentials: true
 }));
 app.use(express.json());
+app.use(cookieParser());
 
 // Routes
 const authRoutes = require("./Routes/Authroutes");
