@@ -2,26 +2,26 @@ import React, { useState } from "react";
 import GavelIcon from "@mui/icons-material/Gavel";
 import LoginIcon from "@mui/icons-material/Login";
 import { useNavigate, Link } from "react-router-dom";
+import client from "../api/client";
 
 export default function Login() {
 	const navigate = useNavigate();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
+	const [loading, setLoading] = useState(false);
 
-	// Default credentials (front-end only)
-	const DEFAULT_EMAIL = "user@example.com";
-	const DEFAULT_PASSWORD = "secret123";
-
-	const handleSubmit = (e) => {
+	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setError("");
-		if (email === DEFAULT_EMAIL && password === DEFAULT_PASSWORD) {
-			// Optionally set a simple flag for demo purposes
-			localStorage.setItem("auth", "true");
+		try {
+			setLoading(true);
+			await client.post("/api/auth/login", { email, password });
 			navigate("/");
-		} else {
-			setError("Invalid email or password. Try user@example.com / secret123");
+		} catch (err) {
+			setError(err?.message || "Login failed. Please try again.");
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -88,9 +88,10 @@ export default function Login() {
 
 							<button
 								type="submit"
-								className="w-full bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+								disabled={loading}
+								className="w-full bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
 							>
-								Sign In
+								{loading ? "Signing in..." : "Sign In"}
 							</button>
 
 							<div className="text-center text-sm text-slate-600 dark:text-slate-400">

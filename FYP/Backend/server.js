@@ -1,17 +1,27 @@
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
+require("dotenv").config();
+const { initDatabase, query } = require("./DB/db");
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || true,
+  credentials: true
+}));
 app.use(express.json());
-require("dotenv").config();
+app.use(cookieParser());
 
-// Test route
-app.get("/api/health", (req, res) => {
-  res.json({ ok: true, message: "Backend is running" });
-});
+// Routes
+const authRoutes = require("./Routes/Authroutes");
+app.use("/api/auth", authRoutes);
+
+// Initialize DB 
+initDatabase()
+  .then(() => console.log("DB connection initialized"))
+  .catch((e) => console.error("DB init failed:", e.message));
 
 // Start server
 const PORT = process.env.PORT || 5000;
