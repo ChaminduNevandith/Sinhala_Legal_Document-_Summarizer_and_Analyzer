@@ -307,7 +307,7 @@ export default function UploadNewDocument() {
                   await client.post("/api/documents/upload", form, {
                     headers: { "Content-Type": "multipart/form-data" },
                   });
-                  navigate("/");
+                  navigate("/document");
                 } catch (e) {
                   setError(e?.message || "Upload failed.");
                 } finally {
