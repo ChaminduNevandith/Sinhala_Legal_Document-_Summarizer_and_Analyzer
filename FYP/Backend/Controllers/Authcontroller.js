@@ -97,4 +97,33 @@ async function logout(req, res) {
 	}
 }
 
-module.exports = { signup, login, logout };
+// Return currently authenticated user based on JWT cookie
+async function me(req, res) {
+	try {
+		const tokenName = TOKEN_COOKIE;
+		const token = req.cookies?.[tokenName];
+		if (!token) {
+			return res.status(401).json({ message: "Not authenticated." });
+		}
+
+		let payload;
+		try {
+			payload = jwt.verify(token, JWT_SECRET);
+		} catch (err) {
+			return res.status(401).json({ message: "Invalid or expired token." });
+		}
+
+		const rows = await query("SELECT id, name, email FROM users WHERE id = ? LIMIT 1", [payload.sub]);
+		if (!rows || rows.length === 0) {
+			return res.status(401).json({ message: "User not found." });
+		}
+
+		const user = rows[0];
+		return res.json({ user });
+	} catch (err) {
+		console.error("Me endpoint error:", err.message);
+		return res.status(500).json({ message: "Internal server error." });
+	}
+}
+
+module.exports = { signup, login, logout, me };

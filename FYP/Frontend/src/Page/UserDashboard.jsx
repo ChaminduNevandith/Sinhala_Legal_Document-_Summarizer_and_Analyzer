@@ -1,4 +1,6 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import client from "../api/client";
 import SidebarItem from "../Components/SidebarItem.jsx";
 import StatCard from "../Components/StatCard.jsx";
 import DocCard from "../Components/DocCard.jsx";
@@ -6,6 +8,16 @@ import BottomNavItem from "../Components/BottomNavItem.jsx";
 import TopAppBar from "../Components/TopAppBar.jsx";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await client.post("/api/auth/logout");
+      navigate("/login", { replace: true });
+    } catch (err) {
+      console.error("Logout failed:", err?.message || err);
+    }
+  };
   const recentDocs = [
     {
       id: 1,
@@ -41,6 +53,7 @@ export default function Dashboard() {
           // TODO: Hook into notifications panel when implemented
           console.log("Notifications clicked");
         }}
+        onLogoutClick={handleLogout}
       />
 
       {/* Page Layout */}
@@ -111,6 +124,7 @@ export default function Dashboard() {
                 <SmallAction icon="search" label="Search" />
                 <SmallAction icon="history" label="History" />
                 <SmallAction icon="shield" label="Privacy" />
+
               </div>
             </div>
 
@@ -144,9 +158,9 @@ export default function Dashboard() {
   );
 }
 
-function SmallAction({ icon, label }) {
+function SmallAction({ icon, label, onClick }) {
   return (
-    <button className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-[#232831] px-3 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-background-dark dark:text-slate-200 dark:hover:bg-slate-800">
+    <button onClick={onClick} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-[#232831] px-3 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-background-dark dark:text-slate-200 dark:hover:bg-slate-800">
       <span className="material-symbols-outlined text-lg">{icon}</span>
       {label}
     </button>
