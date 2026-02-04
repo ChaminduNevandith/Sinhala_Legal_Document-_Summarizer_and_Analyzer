@@ -1,10 +1,89 @@
-import React from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import * as mammoth from "mammoth/mammoth.browser";
 
 export default function UploadNewDocument() {
-
   const navigate = useNavigate();
-  
+
+  const fileInputRef = useRef(null);
+  const [file, setFile] = useState(null);
+  const [error, setError] = useState("");
+  const [previewUrl, setPreviewUrl] = useState(""); // for PDFs
+  const [docxHtml, setDocxHtml] = useState(""); // for DOCX
+  const [isConverting, setIsConverting] = useState(false);
+
+  const resetPreview = useCallback(() => {
+    setPreviewUrl("");
+    setDocxHtml("");
+  }, []);
+
+  const isSupportedType = (f) => {
+    const allowedMime = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    const allowedExt = [".pdf", ".docx"];
+    const nameOk = allowedExt.some((ext) => f.name?.toLowerCase().endsWith(ext));
+    return allowedMime.includes(f.type) || nameOk;
+  };
+
+  const handleSelectedFile = async (f) => {
+    if (!f) return;
+    setError("");
+    resetPreview();
+
+    if (!isSupportedType(f)) {
+      setError("Only PDF and DOCX files are allowed.");
+      setFile(null);
+      return;
+    }
+
+    setFile(f);
+
+    if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
+      const url = URL.createObjectURL(f);
+      setPreviewUrl(url);
+    } else {
+      // DOCX: convert to HTML using mammoth
+      try {
+        setIsConverting(true);
+        const arrayBuffer = await f.arrayBuffer();
+        const { value } = await mammoth.convertToHtml({ arrayBuffer });
+        setDocxHtml(value || "<p>No content extracted.</p>");
+      } catch (e) {
+        setError("Could not render DOCX preview.");
+      } finally {
+        setIsConverting(false);
+      }
+    }
+  };
+
+  const onInputChange = async (e) => {
+    const f = e.target.files?.[0];
+    await handleSelectedFile(f);
+  };
+
+  const onBrowseClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const onDrop = async (e) => {
+    e.preventDefault();
+    const f = e.dataTransfer?.files?.[0];
+    await handleSelectedFile(f);
+  };
+
+  const onDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const clearFile = () => {
+    setFile(null);
+    setError("");
+    resetPreview();
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   return (
     <div className="min-h-screen bg-background-light text-slate-900 dark:bg-background-dark dark:text-white">
       {/* Top App Bar */}
@@ -40,7 +119,11 @@ export default function UploadNewDocument() {
           {/* Left: Upload area */}
           <section className="space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1c2027]/60">
-              <div className="flex flex-col items-center gap-6 rounded-xl border-2 border-dashed border-slate-300 bg-white/50 px-6 py-12 transition-all hover:border-primary/50 dark:border-[#3b4554] dark:bg-[#1c2027]/30">
+              <div
+                className="flex flex-col items-center gap-6 rounded-xl border-2 border-dashed border-slate-300 bg-white/50 px-6 py-12 transition-all hover:border-primary/50 dark:border-[#3b4554] dark:bg-[#1c2027]/30"
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+              >
                 <div className="rounded-full bg-primary/10 p-4">
                   <span className="material-symbols-outlined text-4xl text-primary">
                     cloud_upload
@@ -56,8 +139,17 @@ export default function UploadNewDocument() {
                   </p>
                 </div>
 
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  className="hidden"
+                  onChange={onInputChange}
+                />
+
                 <button
                   type="button"
+                  onClick={onBrowseClick}
                   className="flex h-11 min-w-[160px] items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-lg shadow-primary/20"
                 >
                   Browse file
@@ -67,8 +159,56 @@ export default function UploadNewDocument() {
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Max size: 10MB (example)
                 </p>
+
+                {error && (
+                  <p className="mt-2 text-sm font-semibold text-red-600 dark:text-red-400">
+                    {error}
+                  </p>
+                )}
               </div>
             </div>
+
+            {/* Preview Panel */}
+            {file && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1c2027]/60">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-primary">description</span>
+                    <div>
+                      <p className="text-sm font-semibold">{file.name}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {(file.size / (1024 * 1024)).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearFile}
+                    className="rounded-lg px-3 py-1 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="mt-4">
+                  {previewUrl && (
+                    <iframe
+                      title="PDF Preview"
+                      src={previewUrl}
+                      className="h-[480px] w-full rounded-lg border border-slate-200 dark:border-slate-700"
+                    />
+                  )}
+                  {!previewUrl && (
+                    <div className="max-h-[480px] overflow-auto rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                      {isConverting ? (
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Converting DOCX to preview…</p>
+                      ) : (
+                        <div className="prose dark:prose-invert" dangerouslySetInnerHTML={{ __html: docxHtml }} />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Privacy Note */}
             <div className="flex items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 py-3 dark:bg-slate-800/50">
@@ -148,7 +288,8 @@ export default function UploadNewDocument() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
             <button
               type="button"
-              className="flex h-14 w-full items-center justify-center rounded-xl bg-[#1c2027] text-base font-bold text-white shadow-xl shadow-primary/30 transition-transform active:scale-95 lg:w-auto lg:px-10"
+              disabled={!file}
+              className="flex h-14 w-full items-center justify-center rounded-xl bg-[#1c2027] text-base font-bold text-white shadow-xl shadow-primary/30 transition-transform active:scale-95 lg:w-auto lg:px-10 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               Upload &amp; Analyze
             </button>
