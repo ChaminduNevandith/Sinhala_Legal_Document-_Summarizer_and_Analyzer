@@ -91,9 +91,9 @@ export default function Dashboard() {
           </div>
 
           {/* CTA */}
-          <button className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#1c2027] px-5 text-base font-bold text-white shadow-lg shadow-primary/20 transition-transform active:scale-95">
+          <button onClick={() => navigate("/upload")} className="flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-[#1c2027] px-5 text-base font-bold text-white shadow-lg shadow-primary/20 transition-transform active:scale-95">
             <span className="material-symbols-outlined">add_circle</span>
-            <span>නව ලේඛනයක් එක් කරන්න</span>
+            <span >නව ලේඛනයක් එක් කරන්න</span>
           </button>
 
           {/* Section Header */}
@@ -120,7 +120,7 @@ export default function Dashboard() {
                 Quick Actions
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2 ">
-                <SmallAction icon="upload" label="Upload" />
+                <SmallAction icon="upload" label="Upload" onClick={() => navigate("/upload")} />
                 <SmallAction icon="search" label="Search" />
                 <SmallAction icon="history" label="History" />
                 <SmallAction icon="shield" label="Privacy" />

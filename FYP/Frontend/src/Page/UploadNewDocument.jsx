@@ -1,30 +1,21 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function UploadNewDocument() {
+
+  const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen bg-background-light text-slate-900 dark:bg-background-dark dark:text-white">
       {/* Top App Bar */}
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-background-light/80 backdrop-blur-md dark:border-slate-800 dark:bg-background-dark/80">
         <div className="mx-auto w-full max-w-6xl">
-          {/* iOS status bar (mobile only) */}
-          <div className="flex h-11 items-center justify-between px-6 lg:hidden">
-            <span className="text-xs font-semibold">9:41</span>
-            <div className="flex gap-1.5">
-              <span className="material-symbols-outlined text-[14px]">
-                signal_cellular_4_bar
-              </span>
-              <span className="material-symbols-outlined text-[14px]">wifi</span>
-              <span className="material-symbols-outlined text-[14px]">
-                battery_full
-              </span>
-            </div>
-          </div>
-
           <div className="flex items-center justify-between px-4 py-4">
             <button
               type="button"
               className="flex size-10 items-center justify-center rounded-full text-primary transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
               aria-label="Go back"
+              onClick={() => navigate("/")}
             >
               <span className="material-symbols-outlined">arrow_back_ios</span>
             </button>
