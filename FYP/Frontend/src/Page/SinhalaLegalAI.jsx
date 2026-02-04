@@ -15,7 +15,7 @@ export default function SinhalaLegalAI() {
     <div className="dark min-h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-white flex flex-col">
       {/* Top Navigation Bar */}
       <header className="sticky top-0 z-50 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800">
-        <div className="flex items-center justify-between px-4 py-4 max-w-6xl mx-auto">
+        <div className="flex items-center justify-between px-4 py-4 w-full">
           <div className="flex items-center gap-2">
             <div className="bg-primary p-1.5 rounded-lg flex items-center justify-center">
               <GavelIcon style={{ color: "white", fontSize: 24 }} />
