@@ -1,6 +1,9 @@
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { query } = require("../DB/db");
+const { spawn } = require("child_process");
+const fs = require("fs");
+const path = require("path");
 
 const TOKEN_COOKIE = process.env.COOKIE_NAME || "token";
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
@@ -75,7 +78,7 @@ async function uploadDocument(req, res) {
 
 		// Insert into DB
 		const sql = `INSERT INTO documents (user_id, name, mime_type, size, iv, auth_tag, data, doc_type, query_text, created_at)
-								 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
+						 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
 		const params = [
 			userId,
 			file.originalname,
@@ -89,6 +92,24 @@ async function uploadDocument(req, res) {
 		];
 		const result = await query(sql, params);
 
+		// --- Summarization logic ---
+		// Save decrypted file temporarily
+		const tempDir = path.join(__dirname, "../FYP_models/tmp");
+		if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
+		const tempFilePath = path.join(tempDir, `${Date.now()}_${file.originalname}`);
+		fs.writeFileSync(tempFilePath, file.buffer);
+		let fileType = null;
+		if (isPdf) fileType = "pdf";
+		else if (isDocx) fileType = "docx";
+		let summary = null;
+		try {
+			summary = await summarizeDocument(tempFilePath, fileType);
+		} catch (e) {
+			console.error("Summarization error:", e);
+		}
+		fs.unlinkSync(tempFilePath);
+		// --- End summarization logic ---
+
 		return res.status(201).json({
 			message: "Document uploaded securely.",
 			document: {
@@ -97,6 +118,7 @@ async function uploadDocument(req, res) {
 				mime_type: file.mimetype,
 				size: file.size,
 				created_at: new Date().toISOString(),
+				summary: summary || null
 			}
 		});
 	} catch (err) {
@@ -106,6 +128,39 @@ async function uploadDocument(req, res) {
 		}
 		return res.status(500).json({ message: "Internal server error." });
 	}
+}
+
+// Helper to decrypt document
+function decryptDocument(encryptedBuffer, iv, authTag) {
+	const key = getEncryptionKey();
+	const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+	decipher.setAuthTag(authTag);
+	const decrypted = Buffer.concat([
+		decipher.update(encryptedBuffer),
+		decipher.final()
+	]);
+	return decrypted;
+}
+
+async function summarizeDocument(tempFilePath, fileType) {
+	return new Promise((resolve, reject) => {
+		const py = spawn("python", [path.join(__dirname, "../FYP_models/summarize.py")]);
+		const input = JSON.stringify({ file_path: tempFilePath, file_type: fileType });
+		let output = "";
+		let error = "";
+		py.stdin.write(input);
+		py.stdin.end();
+		py.stdout.on("data", (data) => { output += data.toString(); });
+		py.stderr.on("data", (data) => { error += data.toString(); });
+		py.on("close", (code) => {
+			if (code !== 0) return reject(error || `Python exited with code ${code}`);
+			try {
+				const result = JSON.parse(output);
+				if (result.summary) resolve(result.summary);
+				else reject(result.error || "No summary returned");
+			} catch (e) { reject(e.message); }
+		});
+	});
 }
 
 module.exports = { requireAuth, uploadDocument };
