@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import client from "../api/client";
 
 export default function DocumentDetails() {
   const tabs = useMemo(
@@ -11,16 +13,36 @@ export default function DocumentDetails() {
   );
 
   const [activeTab, setActiveTab] = useState("quick");
+  const [summary, setSummary] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchParams] = useSearchParams();
+  const docId = searchParams.get("id");
 
-  const quickSummary = [
-    "මෙම ගිවිසුම වසර දෙකක කාලසීමාවක් සඳහා වලංගු වේ.",
-    "මාසික කුලිය රුපියල් 45,000ක් වන අතර සෑම මසකම 5 වන දිනට පෙර ගෙවිය යුතුය.",
-    "මාස 6ක අත්තිකාරම් මුදලක් තැන්පත් කළ යුතුය.",
-    "විදුලි සහ ජල බිල්පත් කුලීකරු විසින් දැරිය යුතුය.",
-    "නිවස වාණිජ කටයුතු සඳහා භාවිතා කළ නොහැක.",
-    "ගිවිසුම අවසන් කිරීමට මාස 3ක පූර්ව දැනුම්දීමක් අවශ්‍ය වේ.",
-    "අලුත්වැඩියා කටයුතු සඳහා අයිතිකරුගේ අවසරය අවශ්‍ය වේ.",
-  ];
+  useEffect(() => {
+    async function fetchDocument() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await client.get(`/api/documents/${docId}`);
+        const doc = res.data?.document;
+        if (doc?.summary) {
+          // Try to split summary into bullet points if possible
+          let items = doc.summary.split("\n").filter(Boolean);
+          if (items.length === 1) items = doc.summary.split("•").filter(Boolean);
+          setSummary(items);
+        } else {
+          setSummary(["No summary available."]);
+        }
+      } catch (e) {
+        setError(e.message || "Failed to load document");
+        setSummary(["No summary available."]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (docId) fetchDocument();
+  }, [docId]);
 
   return (
     <div className="min-h-screen bg-background-light text-slate-900 dark:bg-background-dark dark:text-white font-display">
@@ -92,21 +114,27 @@ export default function DocumentDetails() {
             <div className="pt-6">
               {activeTab === "quick" && (
                 <section className="space-y-1">
-                  {quickSummary.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex gap-x-4 border-b border-slate-100 py-3.5 dark:border-slate-800/50"
-                    >
-                      <div className="mt-0.5 flex-shrink-0">
-                        <span className="material-symbols-outlined text-[20px] text-primary">
-                          check_circle
-                        </span>
+                  {loading ? (
+                    <div className="py-6 text-center text-slate-500">Loading summary...</div>
+                  ) : error ? (
+                    <div className="py-6 text-center text-red-500">{error}</div>
+                  ) : (
+                    summary.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex gap-x-4 border-b border-slate-100 py-3.5 dark:border-slate-800/50"
+                      >
+                        <div className="mt-0.5 flex-shrink-0">
+                          <span className="material-symbols-outlined text-[20px] text-primary">
+                            check_circle
+                          </span>
+                        </div>
+                        <p className="text-base font-normal leading-relaxed text-slate-800 dark:text-white">
+                          {item}
+                        </p>
                       </div>
-                      <p className="text-base font-normal leading-relaxed text-slate-800 dark:text-white">
-                        {item}
-                      </p>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </section>
               )}
 
@@ -127,7 +155,7 @@ export default function DocumentDetails() {
                       </span>
                     </div>
                     <ul className="ml-5 list-disc space-y-2 text-sm text-slate-800 dark:text-white/90">
-                      <li>පූර්ව දැනුම්දීමකින් තොරව අයිතිකරුට නිවසට ඇතුළු විය නොහැක.</li>
+                      <li>පූර්ව දැනුම්දීමකින් තොරව අයිතිකරුට නිවසට ඇතුළු වෙන්නේ පෙර ගෙවීමට අවශ්‍ය වේ.</li>
                       <li>අත්තිකාරම් මුදල ගිවිසුම අවසානයේ ආපසු ලබාගත හැක.</li>
                       <li>අත්‍යාවශ්‍ය නඩත්තු කටයුතු අයිතිකරු ලවා කරවා ගත හැක.</li>
                     </ul>
@@ -178,7 +206,7 @@ export default function DocumentDetails() {
                   <div className="space-y-5">
                     <QA
                       q="ප්‍රශ්නය: මට කාලයට පෙර නිවසෙන් අයින් වෙන්න පුලුවන්ද?"
-                      a="ඔව්, ඔබට ඕනෑම වෙලාවක ඉවත් විය හැක. නමුත් ගිවිසුම අනුව ඔබ මාස 3කට පෙර අයිතිකරුට ඒ පිළිබඳව ලිඛිතව දැනුම් දිය යුතුය. එසේ නොවුනහොත් අත්තිකාරම් මුදලින් කොටසක් අහිමි විය හැක."
+                      a="ඔව්, ඔබට ඕනෑම වෙලාවක ඉවත් වෙන්නේ පෙර ගෙවීමට අවශ්‍ය වේ. නමුත් ගිවිසුම අනුව ඔබ මාස 3කට පෙර අයිතිකරුට ඒ පිළිබඳව ලිඛිතව දැනුම් දිය යුතුය. එසේ නොවුනහොත් අත්තිකාරම් මුදලින් කොටසක් අහිමි විය හැක."
                     />
                     <QA
                       q="ප්‍රශ්නය: නිවසේ අලුත්වැඩියාවක් අවශ්‍ය වුවහොත් කුමක් කළ යුතුද?"
