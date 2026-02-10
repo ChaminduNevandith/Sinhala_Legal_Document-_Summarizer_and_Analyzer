@@ -2,20 +2,38 @@ import sys
 import json
 import os
 
-# Add your model loading code here (e.g., using transformers, peft, etc.)
+def extract_text_ocr(pdf_path, txt_path):
+    from pdf2image import convert_from_path
+    import pytesseract
+    import cv2
+    pages = convert_from_path(pdf_path)
+    full_text = ""
+    for i, page in enumerate(pages):
+        img_path = f"{pdf_path}_page_{i}.png"
+        page.save(img_path, "PNG")
+        img = cv2.imread(img_path)
+        text = pytesseract.image_to_string(img, lang="sin")
+        full_text += text + "\n"
+        os.remove(img_path)
+    with open(txt_path, "w", encoding="utf-8") as f:
+        f.write(full_text)
+    return full_text
 
 def extract_text(file_path, file_type):
     if file_type == "pdf":
-        import pdfplumber
-        text = ""
-        with pdfplumber.open(file_path) as pdf:
-            for page in pdf.pages:
-                text += page.extract_text() or ""
-        return text
+        txt_path = file_path + ".txt"
+        return extract_text_ocr(file_path, txt_path)
     elif file_type == "docx":
         from docx import Document
         doc = Document(file_path)
-        return "\n".join([p.text for p in doc.paragraphs])
+        text = "\n".join([p.text for p in doc.paragraphs])
+        txt_path = file_path + ".txt"
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(text)
+        return text
+    elif file_type == "txt":
+        with open(file_path, "r", encoding="utf-8") as f:
+            return f.read()
     else:
         raise ValueError("Unsupported file type")
 
