@@ -17,6 +17,8 @@ app.use(cookieParser());
 // Routes
 const authRoutes = require("./Routes/Authroutes");
 app.use("/api/auth", authRoutes);
+const documentRoutes = require("./Routes/UploadNewDocumentroutes");
+app.use("/api/documents", documentRoutes);
 
 // Initialize DB 
 initDatabase()
