@@ -36,15 +36,7 @@ export default function Login() {
                         </div>
                         <h2 className="text-lg font-bold tracking-tight">Sinhala Legal AI</h2>
                       </div>
-            
-                      <Link
-                        to="/login"
-                        className="text-white font-semibold text-base px-4 py-2 flex items-center gap-1 rounded-[5px]"
-                        style={{ background: "linear-gradient(135deg, #2b7cee22 0%, #2b7cee 100%)" }}
-                      >
-                        <LoginIcon fontSize="small" />
-                        Login
-                      </Link>
+        
                     </div>
                   </header>
 
