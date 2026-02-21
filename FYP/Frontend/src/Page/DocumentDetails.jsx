@@ -1,8 +1,10 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import client from "../api/client";
+import TopAppBar from "../Components/TopAppBar";
 
 export default function DocumentDetails() {
+  const navigate = useNavigate();
   const tabs = useMemo(
     () => [
       { id: "quick", label: "කෙටි සාරාංශය" },
@@ -46,30 +48,14 @@ export default function DocumentDetails() {
 
   return (
     <div className="min-h-screen bg-background-light text-slate-900 dark:bg-background-dark dark:text-white font-display">
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-background-light/80 backdrop-blur-md dark:border-slate-800 dark:bg-background-dark/90">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
-          <button
-            type="button"
-            className="flex size-10 items-center justify-center rounded-full text-primary transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="Go back"
-          >
-            <span className="material-symbols-outlined">arrow_back_ios_new</span>
-          </button>
-
-          <h2 className="flex-1 text-center text-lg font-bold leading-tight tracking-tight text-slate-900 dark:text-white">
-            ලේඛන විස්තරය
-          </h2>
-
-          <button
-            type="button"
-            className="flex size-10 items-center justify-center rounded-lg text-primary transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-            aria-label="Share"
-          >
-            <span className="material-symbols-outlined">share</span>
-          </button>
-        </div>
-      </header>
+      {/* Top App Bar */}
+      <TopAppBar
+        title="ආයුබෝවන්, අමිල"
+        subtitle="අද දිනය: ඔක්තෝබර් 24"
+        onNotificationsClick={() => {}}
+        onLogoutClick={() => {}}
+        className="mx-auto w-full max-w-6xl"
+      />
 
       {/* Page layout */}
       <div className="mx-auto w-full max-w-6xl px-4 pb-32">

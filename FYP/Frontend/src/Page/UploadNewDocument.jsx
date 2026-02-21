@@ -2,6 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import client from "../api/client";
 import * as mammoth from "mammoth/mammoth.browser";
+import TopAppBar from "../Components/TopAppBar";
 
 export default function UploadNewDocument() {
   const navigate = useNavigate();
@@ -91,31 +92,13 @@ export default function UploadNewDocument() {
   return (
     <div className="min-h-screen bg-background-light text-slate-900 dark:bg-background-dark dark:text-white">
       {/* Top App Bar */}
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-background-light/80 backdrop-blur-md dark:border-slate-800 dark:bg-background-dark/80">
-        <div className="mx-auto w-full max-w-6xl">
-          <div className="flex items-center justify-between px-4 py-4">
-            <button
-              type="button"
-              className="flex size-10 items-center justify-center rounded-full text-primary transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-              aria-label="Go back"
-              onClick={() => navigate("/")}
-            >
-              <span className="material-symbols-outlined">arrow_back_ios</span>
-            </button>
-
-            <div className="flex flex-1 flex-col items-center">
-              <h2 className="text-lg font-bold leading-tight tracking-tight">
-                Upload New Document
-              </h2>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                අලුත් ලේඛනයක් එක් කරන්න
-              </p>
-            </div>
-
-            <div className="size-10" />
-          </div>
-        </div>
-      </header>
+      <TopAppBar
+        title="ආයුබෝවන්, අමිල"
+        subtitle="අද දිනය: ඔක්තෝබර් 24"
+        onNotificationsClick={() => {}}
+        onLogoutClick={() => {}}
+        className="mx-auto w-full "
+      />
 
       {/* Page */}
       <div className="mx-auto w-full max-w-6xl px-4 py-6">
