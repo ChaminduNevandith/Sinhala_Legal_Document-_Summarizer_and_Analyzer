@@ -45,23 +45,40 @@ def extract_text(file_path, file_type):
 
 
 def summarize_via_fastapi(text: str) -> str:
-    """Send extracted text to the FastAPI model server and return its summary."""
+    """Send extracted text to the FastAPI model server and return its summary.
+
+    This version is optimized to avoid extremely long requests that can take
+    several minutes to process. It truncates very long documents before sending
+    to the model and uses a lower timeout so the caller doesn't hang forever.
+    """
     import requests
 
     url = "http://127.0.0.1:8000/summarize"  # FastAPI endpoint from FastApiConnection.py
+
+    # Short-circuit empty text
+    if not text or not text.strip():
+        return ""
+
+    # Limit the amount of text we send to the model to keep inference time
+    # reasonable. You can tune this value depending on your hardware.
+    max_chars = 8000
+    text_to_send = text[:max_chars] if len(text) > max_chars else text
+
     payload = {
-        "text": text,
+        "text": text_to_send,
         # rely on default max_new_tokens / num_beams defined in the API
     }
 
     try:
-        response = requests.post(url, json=payload, timeout=300)
+        # Use a smaller timeout so uploads don't appear to hang forever.
+        response = requests.post(url, json=payload, timeout=120)
         response.raise_for_status()
         data = response.json()
         return data.get("summary", "")
     except Exception as e:
-        # Fallback: return a simple truncated summary if API fails
-        return f"[SUMMARY_ERROR] {e}\n{text[:200]}"
+        # Fallback: return a simple truncated summary if API fails so that the
+        # Node.js side still gets *something* instead of hanging.
+        return f"[SUMMARY_ERROR] {e}\n{text[:500]}"
 
 
 if __name__ == "__main__":

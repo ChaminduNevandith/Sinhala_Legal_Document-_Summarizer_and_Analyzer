@@ -6,6 +6,7 @@ import torch
 import uvicorn
 import os
 import pytesseract
+import traceback
 
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
@@ -22,9 +23,9 @@ print("Loading model...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
 model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_PATH)
 
-# Fix generation config
-model.config.max_length = 256
-model.config.no_repeat_ngram_size = 3
+# Fix generation config using the supported generation_config API
+model.generation_config.max_length = 256
+model.generation_config.no_repeat_ngram_size = 3
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
@@ -33,8 +34,9 @@ print(f"Model loaded on {device}")
 
 class SummarizeRequest(BaseModel):
     text: str
-    max_new_tokens: int = 150
-    num_beams: int = 4
+    # Use smaller defaults so each request is faster, especially on CPU.
+    max_new_tokens: int = 80
+    num_beams: int = 2
 
 class SummarizeResponse(BaseModel):
     summary: str
@@ -114,6 +116,9 @@ async def summarize(request: SummarizeRequest):
         )
 
     except Exception as e:
+        # Print full traceback to server logs for debugging
+        print("[FASTAPI_SUMMARIZE_ERROR]", repr(e))
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
