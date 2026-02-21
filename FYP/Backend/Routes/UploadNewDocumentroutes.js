@@ -26,7 +26,7 @@ router.post("/upload", requireAuth, upload.single("file"), uploadDocument);
 // GET /api/documents/:id
 router.get("/:id", requireAuth, async (req, res) => {
 	try {
-		const [rows] = await query("SELECT id, name, mime_type, size, created_at, doc_type, summary FROM documents WHERE id = ?", [req.params.id]);
+		const rows = await query("SELECT id, name, mime_type, size, created_at, doc_type, summary FROM documents WHERE id = ?", [req.params.id]);
 		if (!rows || rows.length === 0) return res.status(404).json({ message: "Document not found" });
 		res.json({ document: rows[0] });
 	} catch (e) {

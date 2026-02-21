@@ -43,25 +43,57 @@ def extract_text(file_path, file_type):
     else:
         raise ValueError("Unsupported file type")
 
+def _chunk_text(text: str, max_chars: int = 1500):
+    """Split text into simple fixed-size character chunks.
+
+    This does *not* depend on '.', which can be unreliable in OCR'd Sinhala
+    documents. We just take consecutive slices of length max_chars.
+    """
+    text = text.strip()
+    if not text:
+        return []
+
+    chunks = []
+    for i in range(0, len(text), max_chars):
+        chunks.append(text[i : i + max_chars])
+    return chunks
+
 
 def summarize_via_fastapi(text: str) -> str:
-    """Send extracted text to the FastAPI model server and return its summary."""
+    """Send extracted text to the FastAPI model server in sentence-based chunks.
+
+    The document is first split into fixed-size chunks by character length
+    (no dependency on '.' punctuation). Each chunk is summarized separately,
+    and the partial summaries
+    are then combined into a single final summary string.
+    """
     import requests
 
     url = "http://127.0.0.1:8000/summarize"  # FastAPI endpoint from FastApiConnection.py
-    payload = {
-        "text": text,
-        # rely on default max_new_tokens / num_beams defined in the API
-    }
 
-    try:
-        response = requests.post(url, json=payload, timeout=300)
-        response.raise_for_status()
-        data = response.json()
-        return data.get("summary", "")
-    except Exception as e:
-        # Fallback: return a simple truncated summary if API fails
-        return f"[SUMMARY_ERROR] {e}\n{text[:200]}"
+    text = text.strip()
+    if not text:
+        return ""
+
+    chunks = _chunk_text(text, max_chars=4000)
+    if not chunks:
+        return ""
+
+    summaries = []
+    for idx, chunk in enumerate(chunks):
+        payload = {"text": chunk}
+        try:
+            response = requests.post(url, json=payload, timeout=120)
+            response.raise_for_status()
+            data = response.json()
+            part = data.get("summary", "")
+            if part:
+                summaries.append(part.strip())
+        except Exception as e:
+            # Record the error and move on to the next chunk
+            summaries.append(f"[PART_{idx+1}_ERROR] {e}")
+
+    return "\n".join(summaries)
 
 
 if __name__ == "__main__":

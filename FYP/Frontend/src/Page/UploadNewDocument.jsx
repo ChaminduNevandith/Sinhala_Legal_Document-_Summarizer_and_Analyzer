@@ -287,10 +287,15 @@ export default function UploadNewDocument() {
                   form.append("file", file);
                   form.append("doc_type", docType);
                   form.append("query_text", queryText);
-                  await client.post("/api/documents/upload", form, {
+                  const res = await client.post("/api/documents/upload", form, {
                     headers: { "Content-Type": "multipart/form-data" },
                   });
-                  navigate("/document");
+                  const newId = res?.data?.document?.id;
+                  if (newId) {
+                    navigate(`/document?id=${newId}`);
+                  } else {
+                    navigate("/document");
+                  }
                 } catch (e) {
                   setError(e?.message || "Upload failed.");
                 } finally {

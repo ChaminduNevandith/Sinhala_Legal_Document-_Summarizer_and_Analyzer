@@ -30,9 +30,22 @@ async function ensureDocumentsTable() {
 			doc_type VARCHAR(50) NULL,
 			query_text TEXT NULL,
 			created_at DATETIME NOT NULL,
+			-- optional summary of the document
+			summary LONGTEXT NULL,
 			INDEX (user_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
 	);
+
+	// In case the table already existed without the summary column,
+	// attempt to add it. Ignore the error if the column is already there.
+	try {
+		await query("ALTER TABLE documents ADD COLUMN summary LONGTEXT NULL");
+	} catch (e) {
+		const msg = String(e && e.message);
+		if (!msg.includes("Duplicate column") && !msg.includes("ER_DUP_FIELDNAME")) {
+			console.error("Failed to ensure summary column:", msg);
+		}
+	}
 }
 
 function requireAuth(req, res, next) {
@@ -108,6 +121,15 @@ async function uploadDocument(req, res) {
 			console.error("Summarization error:", e);
 		}
 		fs.unlinkSync(tempFilePath);
+
+		// Persist the summary in the documents table if we have one
+		if (summary) {
+			try {
+				await query("UPDATE documents SET summary = ? WHERE id = ?", [summary, result.insertId]);
+			} catch (e) {
+				console.error("Failed to save summary to DB:", e && e.message);
+			}
+		}
 		// --- End summarization logic ---
 
 		return res.status(201).json({

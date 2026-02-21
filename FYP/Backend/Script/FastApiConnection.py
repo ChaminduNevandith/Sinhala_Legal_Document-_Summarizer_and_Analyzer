@@ -6,6 +6,7 @@ import torch
 import uvicorn
 import os
 import pytesseract
+import traceback
 
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
@@ -22,9 +23,10 @@ print("Loading model...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
 model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_PATH)
 
-# Fix generation config
-model.config.max_length = 256
-model.config.no_repeat_ngram_size = 3
+# Fix generation config using the supported generation_config API.
+# Use a larger max_length so summaries don't get cut off early.
+model.generation_config.max_length = 1024
+model.generation_config.no_repeat_ngram_size = 3
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
@@ -33,7 +35,9 @@ print(f"Model loaded on {device}")
 
 class SummarizeRequest(BaseModel):
     text: str
-    max_new_tokens: int = 150
+    # Larger defaults for fuller summaries. Increase with care: higher values
+    # mean slower generation, especially on CPU.
+    max_new_tokens: int = 512
     num_beams: int = 4
 
 class SummarizeResponse(BaseModel):
@@ -54,7 +58,8 @@ def generate_summary(text: str, max_new_tokens: int, num_beams: int) -> str:
             inputs["input_ids"],
             attention_mask=inputs["attention_mask"],
             max_new_tokens=max_new_tokens,
-            min_length=30,
+            # Encourage the model to write a bit more for each chunk
+            min_length=120,
             num_beams=num_beams,
             early_stopping=True,
             no_repeat_ngram_size=3,
@@ -114,6 +119,9 @@ async def summarize(request: SummarizeRequest):
         )
 
     except Exception as e:
+        # Print full traceback to server logs for debugging
+        print("[FASTAPI_SUMMARIZE_ERROR]", repr(e))
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")

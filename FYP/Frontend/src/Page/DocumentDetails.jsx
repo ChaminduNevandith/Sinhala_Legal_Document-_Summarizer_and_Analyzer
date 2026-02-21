@@ -47,14 +47,14 @@ export default function DocumentDetails() {
   }, [docId]);
 
   return (
-    <div className="min-h-screen bg-background-light text-slate-900 dark:bg-background-dark dark:text-white font-display">
+    <div className="min-h-screen bg-[#1c2027] text-slate-900  dark:text-white font-display">
       {/* Top App Bar */}
       <TopAppBar
         title="ආයුබෝවන්, අමිල"
         subtitle="අද දිනය: ඔක්තෝබර් 24"
         onNotificationsClick={() => {}}
         onLogoutClick={() => {}}
-        className="mx-auto w-full max-w-6xl"
+        className="mx-auto w-full "
       />
 
       {/* Page layout */}
@@ -73,7 +73,7 @@ export default function DocumentDetails() {
             </div>
 
             {/* Tabs */}
-            <div className="sticky top-[73px] z-40 -mx-4 border-b border-slate-200 bg-background-light/95 backdrop-blur-md dark:border-[#3b4554] dark:bg-background-dark/95 lg:static lg:top-auto lg:mx-0 lg:rounded-2xl lg:border lg:bg-white lg:px-3 lg:py-2 lg:shadow-sm lg:backdrop-blur-0 dark:lg:bg-card-dark dark:lg:border-slate-800">
+            <div className="sticky top-[73px] z-40 -mx-4 border-b border-slate-200 bg-[#1c2027] backdrop-blur-md dark:border-[#3b4554] dark:bg-[#2e343f] lg:static lg:top-auto lg:mx-0 lg:rounded-2xl lg:border lg:bg-[#2e343f] lg:px-3 lg:py-2 lg:shadow-sm lg:backdrop-blur-0 dark:lg:bg-card-dark dark:lg:border-slate-800">
               <div className="flex overflow-x-auto px-4 lg:overflow-visible lg:px-0">
                 {tabs.map((t) => {
                   const active = activeTab === t.id;
@@ -211,18 +211,18 @@ export default function DocumentDetails() {
           {/* Desktop Sidebar */}
           <aside className="hidden lg:block">
             <div className="sticky top-[92px] space-y-4">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-card-dark">
+              <div className="rounded-2xl border border-slate-200 bg-[#1c2027] p-4 shadow-sm  dark:border-slate-800 dark:bg-[#2e343f]">
                 <p className="text-sm font-bold text-slate-900 dark:text-white">Quick actions</p>
 
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <SideAction icon="picture_as_pdf" label="PDF බාගත" />
+                <div className="mt-3 grid grid-cols-2 gap-2 ">
+                  <SideAction icon="picture_as_pdf" label="PDF Download" />
                   <SideAction icon="share" label="Share" />
                   <SideAction icon="bookmark" label="Save" />
                   <SideAction icon="report" label="Report" />
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-card-dark">
+              <div className="rounded-2xl border border-slate-200 bg-[#1c2027] p-4 shadow-sm dark:border-slate-800 dark:bg-[#2e343f]">
                 <p className="text-sm font-bold text-slate-900 dark:text-white">Document info</p>
                 <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
                   <Row k="Type" v="Rental Agreement" />
@@ -267,7 +267,7 @@ function SideAction({ icon, label }) {
   return (
     <button
       type="button"
-      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-background-dark dark:text-slate-200 dark:hover:bg-slate-800"
+      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-[#1c2027] px-3 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-background-dark dark:text-slate-200 dark:hover:bg-slate-800"
     >
       <span className="material-symbols-outlined text-lg">{icon}</span>
       {label}
