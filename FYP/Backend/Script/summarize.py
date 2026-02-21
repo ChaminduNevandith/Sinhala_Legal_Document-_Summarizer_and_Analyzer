@@ -43,42 +43,57 @@ def extract_text(file_path, file_type):
     else:
         raise ValueError("Unsupported file type")
 
+def _chunk_text(text: str, max_chars: int = 1500):
+    """Split text into simple fixed-size character chunks.
+
+    This does *not* depend on '.', which can be unreliable in OCR'd Sinhala
+    documents. We just take consecutive slices of length max_chars.
+    """
+    text = text.strip()
+    if not text:
+        return []
+
+    chunks = []
+    for i in range(0, len(text), max_chars):
+        chunks.append(text[i : i + max_chars])
+    return chunks
+
 
 def summarize_via_fastapi(text: str) -> str:
-    """Send extracted text to the FastAPI model server and return its summary.
+    """Send extracted text to the FastAPI model server in sentence-based chunks.
 
-    This version is optimized to avoid extremely long requests that can take
-    several minutes to process. It truncates very long documents before sending
-    to the model and uses a lower timeout so the caller doesn't hang forever.
+    The document is first split into fixed-size chunks by character length
+    (no dependency on '.' punctuation). Each chunk is summarized separately,
+    and the partial summaries
+    are then combined into a single final summary string.
     """
     import requests
 
     url = "http://127.0.0.1:8000/summarize"  # FastAPI endpoint from FastApiConnection.py
 
-    # Short-circuit empty text
-    if not text or not text.strip():
+    text = text.strip()
+    if not text:
         return ""
 
-    # Limit the amount of text we send to the model to keep inference time
-    # reasonable. You can tune this value depending on your hardware.
-    max_chars = 8000
-    text_to_send = text[:max_chars] if len(text) > max_chars else text
+    chunks = _chunk_text(text, max_chars=4000)
+    if not chunks:
+        return ""
 
-    payload = {
-        "text": text_to_send,
-        # rely on default max_new_tokens / num_beams defined in the API
-    }
+    summaries = []
+    for idx, chunk in enumerate(chunks):
+        payload = {"text": chunk}
+        try:
+            response = requests.post(url, json=payload, timeout=120)
+            response.raise_for_status()
+            data = response.json()
+            part = data.get("summary", "")
+            if part:
+                summaries.append(part.strip())
+        except Exception as e:
+            # Record the error and move on to the next chunk
+            summaries.append(f"[PART_{idx+1}_ERROR] {e}")
 
-    try:
-        # Use a smaller timeout so uploads don't appear to hang forever.
-        response = requests.post(url, json=payload, timeout=120)
-        response.raise_for_status()
-        data = response.json()
-        return data.get("summary", "")
-    except Exception as e:
-        # Fallback: return a simple truncated summary if API fails so that the
-        # Node.js side still gets *something* instead of hanging.
-        return f"[SUMMARY_ERROR] {e}\n{text[:500]}"
+    return "\n".join(summaries)
 
 
 if __name__ == "__main__":
