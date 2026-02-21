@@ -144,7 +144,9 @@ function decryptDocument(encryptedBuffer, iv, authTag) {
 
 async function summarizeDocument(tempFilePath, fileType) {
 	return new Promise((resolve, reject) => {
-		const py = spawn("python", [path.join(__dirname, "../FYP_models/summarize.py")]);
+		const py = spawn("py", [
+				path.join(__dirname, "../Script/summarize.py"),
+		]);
 		const input = JSON.stringify({ file_path: tempFilePath, file_type: fileType });
 		let output = "";
 		let error = "";
