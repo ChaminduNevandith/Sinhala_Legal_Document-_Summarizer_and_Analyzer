@@ -11,7 +11,7 @@ export default function TopAppBar({
 	return (
 		<header
 			className={
-				`sticky top-0 inset-x-0 w-full z-50 border-b border-slate-200 bg-background-light/80 backdrop-blur-md dark:border-slate-800 dark:bg-background-dark/80 ` +
+				`sticky top-0 inset-x-0 w-full z-50 border-b border-slate-200 bg-[#1d1d1d] backdrop-blur-md dark:border-slate-800 dark:bg-background-dark/80 ` +
 				className
 			}
 		>
@@ -47,7 +47,7 @@ export default function TopAppBar({
 						aria-label="Logout"
 					>
 						<span className="material-symbols-outlined text-base">logout</span>
-						<span>ඉවත් වන්න</span>
+						<span>Log Out</span>
 					</button>
 				</div>
 			</div>
