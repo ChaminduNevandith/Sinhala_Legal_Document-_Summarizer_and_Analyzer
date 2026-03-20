@@ -70,6 +70,9 @@ def summarize_via_fastapi(text: str) -> str:
     import requests
 
     url = "http://127.0.0.1:8000/summarize"  # FastAPI endpoint from FastApiConnection.py
+    request_timeout = 300
+    max_new_tokens = 256
+    num_beams = 2
 
     text = text.strip()
     if not text:
@@ -81,9 +84,13 @@ def summarize_via_fastapi(text: str) -> str:
 
     summaries = []
     for idx, chunk in enumerate(chunks):
-        payload = {"text": chunk}
+        payload = {
+            "text": chunk,
+            "max_new_tokens": max_new_tokens,
+            "num_beams": num_beams,
+        }
         try:
-            response = requests.post(url, json=payload, timeout=120)
+            response = requests.post(url, json=payload, timeout=request_timeout)
             response.raise_for_status()
             data = response.json()
             part = data.get("summary", "")

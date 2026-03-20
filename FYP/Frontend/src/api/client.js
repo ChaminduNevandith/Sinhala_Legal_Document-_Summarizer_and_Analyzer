@@ -6,7 +6,7 @@ const client = axios.create({
   baseURL,
   // Increase timeout to allow for OCR + model summarization on large PDFs.
   // 120000ms = 2 minutes; adjust down later if needed.
-  timeout: 120000,
+  timeout: 12000000,
   withCredentials: true,
 });
 
