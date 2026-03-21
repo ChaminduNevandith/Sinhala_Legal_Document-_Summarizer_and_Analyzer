@@ -1,5 +1,6 @@
 
-function SidebarItem({ icon, label, active }) {
+
+function SidebarItem({ icon, label, active, onClick }) {
   return (
     <button
       className={[
@@ -8,6 +9,7 @@ function SidebarItem({ icon, label, active }) {
           ? "bg-primary/10 text-primary"
           : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
       ].join(" ")}
+      onClick={onClick}
     >
       <span className={["material-symbols-outlined", active ? "fill-[1]" : ""].join(" ")}>
         {icon}
