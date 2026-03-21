@@ -41,12 +41,12 @@ function DocCard({ doc }) {
         {isReady ? (
           <div className="flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-500">
             <div className="size-2 rounded-full bg-emerald-500" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">සූදානම්</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Complete</span>
           </div>
         ) : (
           <div className="flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-amber-500">
             <div className="size-2 animate-pulse rounded-full bg-amber-500" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">සැකසෙමින්</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Processing</span>
           </div>
         )}
       </div>
@@ -57,17 +57,17 @@ function DocCard({ doc }) {
             className="flex h-10 flex-1 cursor-not-allowed items-center justify-center gap-1 rounded-lg bg-slate-100 text-sm font-bold text-slate-400 dark:bg-slate-800"
             disabled
           >
-            වෙලාව අවශ්‍යයි...
+            Processing...
           </button>
         ) : (
           <>
             <button className="flex h-10 flex-1 items-center justify-center gap-1 rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20">
               <span className="material-symbols-outlined text-lg">auto_awesome</span>
-              සාරාංශය
+              Summary & Analysis
             </button>
             <button className="flex h-10 flex-1 items-center justify-center gap-1 rounded-lg bg-red-500/10 text-sm font-bold text-red-500 transition-colors hover:bg-red-500/20">
               <span className="material-symbols-outlined text-lg">report_problem</span>
-              අවදානම්
+              Risk Assessment
             </button>
           </>
         )}
