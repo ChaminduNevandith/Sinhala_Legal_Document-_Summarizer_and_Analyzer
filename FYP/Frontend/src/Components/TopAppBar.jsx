@@ -1,8 +1,8 @@
 import React from "react";
 
 export default function TopAppBar({
-	title = "ආයුබෝවන්, අමිල",
-	subtitle = "අද දිනය: ඔක්තෝබර් 24",
+	title = "Welcome Chamindu",
+	subtitle = "Todays date : 2024-06-01",
 	avatarUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuBt-RmcjepGTTtxHmbkNM6QwQ4qvX6kU9SXXkSKY_EkVJjBHcfZRQqNP_I3otZrh1W-kq5SsVVZdrLLW4javun_4_Ht7BkJ-Qcif4zlBSrRf1CV9y-btLr201_wBUwY1J8QRLIvE_tyvMHJLxB7KYCmTfeAlBViGpkSHtW9IxDyjG3wZhMy4u3g4BMumOOPGnPOMB0RXM2Lqi4-KP1oSLgjgX_LFiLUoY8hHEq8N_oVhY8qawaQa8YEzsOlLAHfe6uKnqVNfc2596k",
 	onNotificationsClick,
 	onLogoutClick,

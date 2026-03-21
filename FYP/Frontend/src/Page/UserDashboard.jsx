@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import client from "../api/client";
-import SidebarItem from "../Components/SidebarItem.jsx";
+import Sidebar from "../Components/Sidebar.jsx";
 import StatCard from "../Components/StatCard.jsx";
 import DocCard from "../Components/DocCard.jsx";
 import BottomNavItem from "../Components/BottomNavItem.jsx";
@@ -15,6 +15,8 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [totalDocs, setTotalDocs] = useState(0);
   const [loadingTotal, setLoadingTotal] = useState(true);
+  const [user, setUser] = useState(null);
+  const [today, setToday] = useState("");
 
   const handleLogout = async () => {
     try {
@@ -49,16 +51,31 @@ export default function Dashboard() {
         setLoadingTotal(false);
       }
     }
+    async function fetchUser() {
+      try {
+        const res = await client.get("/api/auth/me");
+        setUser(res.data.user);
+      } catch {
+        setUser(null);
+      }
+    }
+    function getToday() {
+      const d = new Date();
+      // Format: YYYY-MM-DD or localize as needed
+      return d.toLocaleDateString('en-CA');
+    }
     fetchRecentDocs();
     fetchTotalDocs();
+    fetchUser();
+    setToday(getToday());
   }, []);
 
   return (
     <div className="min-h-screen  text-slate-900 dark:bg-background-dark dark:text-slate-100">
       {/* Top App Bar */}
       <TopAppBar
-        title="ආයුබෝවන්, අමිල"
-        subtitle="අද දිනය: ඔක්තෝබර් 24"
+        title={user ? `Welcome, ${user.name}` : "Welcome"}
+        subtitle={today ? `Today's date: ${today}` : ""}
         avatarUrl="https://lh3.googleusercontent.com/aida-public/AB6AXuBt-RmcjepGTTtxHmbkNM6QwQ4qvX6kU9SXXkSKY_EkVJjBHcfZRQqNP_I3otZrh1W-kq5SsVVZdrLLW4javun_4_Ht7BkJ-Qcif4zlBSrRf1CV9y-btLr201_wBUwY1J8QRLIvE_tyvMHJLxB7KYCmTfeAlBViGpkSHtW9IxDyjG3wZhMy4u3g4BMumOOPGnPOMB0RXM2Lqi4-KP1oSLgjgX_LFiLUoY8hHEq8N_oVhY8qawaQa8YEzsOlLAHfe6uKnqVNfc2596k"
         onNotificationsClick={() => {
           // TODO: Hook into notifications panel when implemented
@@ -70,15 +87,8 @@ export default function Dashboard() {
       {/* Page Layout */}
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 pb-24 pt-6 lg:grid-cols-[260px_1fr_320px] lg:pb-10">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:sticky lg:top-[88px] lg:block lg:h-[calc(100vh-88px)]">
-          <div className="rounded-2xl border border-slate-200 bg-[#1c2027] p-4 shadow-sm dark:border-slate-800 dark:bg-surface-dark">
-            <nav className="space-y-2">
-              <SidebarItem active icon="home" label="මුල් පිටුව" />
-              <SidebarItem icon="folder" label="ලේඛනාගාරය" />
-              <SidebarItem icon="help" label="උදව්" />
-              <SidebarItem icon="settings" label="සැකසුම්" />
-            </nav>
-          </div>
+        <aside className="hidden lg:sticky lg:top-22 lg:block lg:h-[calc(100vh-88px)]">
+          <Sidebar />
         </aside>
 
         {/* Main */}
@@ -133,7 +143,7 @@ export default function Dashboard() {
 
         {/* Right Panel (Desktop) */}
         <aside className="hidden lg:block">
-          <div className="sticky top-[88px] space-y-4">
+          <div className="sticky top-22 space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-[#1c2027] p-4 shadow-sm dark:border-slate-800 dark:bg-surface-dark">
               <p className="text-sm font-semibold  text-slate-900 dark:text-white">
                 Quick Actions
