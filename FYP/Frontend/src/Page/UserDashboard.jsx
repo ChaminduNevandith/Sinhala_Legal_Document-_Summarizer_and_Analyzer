@@ -73,6 +73,8 @@ export default function Dashboard() {
     setToday(getToday());
   }, []);
 
+  const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   return (
     <div className="min-h-screen  text-slate-900 dark:bg-background-dark dark:text-slate-100">
       {/* Top App Bar */}
@@ -147,11 +149,31 @@ export default function Dashboard() {
                 {openDoc && (
                   <div className="flex flex-col md:flex-row w-full h-[80vh]">
                     {/* PDF Viewer */}
-                    <div className="flex-1 min-w-[300px] bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-auto">
-                      <div className="text-center text-slate-500">PDF preview not available<br/>({openDoc.title})</div>
+                    <div className="flex-1 min-w-75 bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-auto">
+                      {String(openDoc.mimeType || "").includes("pdf") || String(openDoc.title || "").toLowerCase().endsWith(".pdf") ? (
+                        <iframe
+                          key={openDoc.id}
+                          title={openDoc.title || "Document"}
+                          className="h-full w-full"
+                          src={`${apiBaseUrl}/api/documents/${openDoc.id}/file`}
+                        />
+                      ) : (
+                        <div className="text-center text-slate-500 px-6">
+                          Preview not available for this file type.
+                          <div className="mt-2 text-xs">({openDoc.title})</div>
+                          <a
+                            className="mt-4 inline-flex items-center justify-center rounded-lg bg-primary/10 px-4 py-2 text-sm font-bold text-primary hover:bg-primary/20"
+                            href={`${apiBaseUrl}/api/documents/${openDoc.id}/file`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Download
+                          </a>
+                        </div>
+                      )}
                     </div>
                     {/* Summary & Details */}
-                    <div className="flex-1 min-w-[300px] p-6 overflow-auto">
+                    <div className="flex-1 min-w-75 p-6 overflow-auto">
                       <h2 className="text-xl font-bold mb-2 text-slate-900 dark:text-white">Summary</h2>
                       <div className="mb-4 text-slate-700 dark:text-slate-200 whitespace-pre-line">{openDoc.summary || "No summary available."}</div>
                       <h3 className="text-lg font-semibold mt-4 mb-1 text-slate-900 dark:text-white">Details</h3>
