@@ -67,7 +67,11 @@ def summarize_via_fastapi(text: str) -> str:
     payload = {
         "text": f"සාරාංශය (විස්තරාත්මකව): {text}",
         "max_new_tokens": 1500,
-        "num_beams": 5
+        "num_beams": 7,
+        # Sampling knobs (tune for quality)
+        "do_sample": True,
+        "temperature": 0.7,
+        "top_p": 0.8,
     }
 
     response = requests.post(url, json=payload, timeout=600)
