@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import client from "../api/client";
 import SidebarItem from "../Components/SidebarItem.jsx";
@@ -7,8 +7,14 @@ import DocCard from "../Components/DocCard.jsx";
 import BottomNavItem from "../Components/BottomNavItem.jsx";
 import TopAppBar from "../Components/TopAppBar.jsx";
 
+
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [recentDocs, setRecentDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [totalDocs, setTotalDocs] = useState(0);
+  const [loadingTotal, setLoadingTotal] = useState(true);
 
   const handleLogout = async () => {
     try {
@@ -18,29 +24,34 @@ export default function Dashboard() {
       console.error("Logout failed:", err?.message || err);
     }
   };
-  const recentDocs = [
-    {
-      id: 1,
-      title: "ඉඩම් ඔප්පුව - අංක 452",
-      meta: "2023 ඔක්තෝබර් 12 • 1.2 MB",
-      status: "ready",
-      icon: "description",
-    },
-    {
-      id: 2,
-      title: "රැකියා ගිවිසුම - 2024",
-      meta: "මීට සුළු මොහොතකට පෙර",
-      status: "processing",
-      icon: "sync",
-    },
-    {
-      id: 3,
-      title: "කුලී ගිවිසුම - මොරටුව",
-      meta: "2023 සැප්තැම්බර් 28",
-      status: "ready",
-      icon: "gavel",
-    },
-  ];
+
+  useEffect(() => {
+    async function fetchRecentDocs() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await client.get("/api/getdocuments/recent");
+        setRecentDocs(res.data.documents || []);
+      } catch (err) {
+        setError(err.message || "Failed to load documents");
+      } finally {
+        setLoading(false);
+      }
+    }
+    async function fetchTotalDocs() {
+      setLoadingTotal(true);
+      try {
+        const res = await client.get("/api/getdocuments/total");
+        setTotalDocs(res.data.total || 0);
+      } catch {
+        setTotalDocs(0);
+      } finally {
+        setLoadingTotal(false);
+      }
+    }
+    fetchRecentDocs();
+    fetchTotalDocs();
+  }, []);
 
   return (
     <div className="min-h-screen  text-slate-900 dark:bg-background-dark dark:text-slate-100">
@@ -76,7 +87,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <StatCard
               title="මුළු ලේඛන"
-              value="12"
+              value={loadingTotal ? "..." : totalDocs}
               icon="description"
               valueClassName="text-slate-900 dark:text-white"
               iconClassName="text-primary"
@@ -106,9 +117,17 @@ export default function Dashboard() {
 
           {/* Document List */}
           <div className="space-y-3">
-            {recentDocs.map((doc) => (
-              <DocCard key={doc.id} doc={doc} />
-            ))}
+            {loading ? (
+              <div className="text-center text-slate-500 dark:text-slate-400">Loading...</div>
+            ) : error ? (
+              <div className="text-center text-red-500">{error}</div>
+            ) : recentDocs.length === 0 ? (
+              <div className="text-center text-slate-500 dark:text-slate-400">No documents uploaded in the last 7 days.</div>
+            ) : (
+              recentDocs.map((doc) => (
+                <DocCard key={doc.id} doc={doc} />
+              ))
+            )}
           </div>
         </main>
 
