@@ -101,6 +101,59 @@ async function getRecentDocuments(req, res) {
 	}
 }
 
+// Get all documents for a user (History page)
+async function getAllDocuments(req, res) {
+	try {
+		const userId = req.user?.id;
+		if (!userId) return res.status(401).json({ message: "Not authenticated." });
+
+		const docs = await query(
+			`SELECT id, name, mime_type, size, created_at, summary
+			 FROM documents
+			 WHERE user_id = ?
+			 ORDER BY created_at DESC`,
+			[userId]
+		);
+
+		const mapped = (docs || []).map((doc) => ({
+			id: doc.id,
+			title: doc.name,
+			mimeType: doc.mime_type,
+			meta: `${doc.created_at.toISOString().slice(0, 10)} • ${(doc.size / (1024 * 1024)).toFixed(1)} MB`,
+			status: "ready",
+			icon: "description",
+			summary: doc.summary || null,
+		}));
+
+		return res.json({ documents: mapped });
+	} catch (err) {
+		console.error("Get all documents error:", err.message);
+		return res.status(500).json({ message: "Internal server error." });
+	}
+}
+
+// Get full document details for a user by document id (metadata only; no blob)
+async function getDocumentById(req, res) {
+	try {
+		const userId = req.user?.id;
+		if (!userId) return res.status(401).json({ message: "Not authenticated." });
+
+		const docId = Number(req.params.id);
+		if (!docId) return res.status(400).json({ message: "Invalid document id." });
+
+		const rows = await query(
+			"SELECT id, user_id, name, mime_type, size, created_at, doc_type, query_text, summary FROM documents WHERE id = ? AND user_id = ? LIMIT 1",
+			[docId, userId]
+		);
+		if (!rows || rows.length === 0) return res.status(404).json({ message: "Document not found." });
+
+		return res.json({ document: rows[0] });
+	} catch (err) {
+		console.error("Get document by id error:", err.message);
+		return res.status(500).json({ message: "Internal server error." });
+	}
+}
+
 // Stream decrypted file to the browser (PDF inline; supports Range requests)
 async function getDocumentFile(req, res) {
 	try {
@@ -142,4 +195,4 @@ async function getDocumentFile(req, res) {
 	}
 }
 
-module.exports = { getRecentDocuments, getTotalDocuments, getDocumentFile };
+module.exports = { getRecentDocuments, getAllDocuments, getTotalDocuments, getDocumentFile, getDocumentById };
