@@ -4,6 +4,8 @@ import client from "../api/client";
 import Sidebar from "../Components/Sidebar.jsx";
 import StatCard from "../Components/StatCard.jsx";
 import DocCard from "../Components/DocCard.jsx";
+import Modal from "../Components/Modal.jsx";
+
 import BottomNavItem from "../Components/BottomNavItem.jsx";
 import TopAppBar from "../Components/TopAppBar.jsx";
 
@@ -17,6 +19,7 @@ export default function Dashboard() {
   const [loadingTotal, setLoadingTotal] = useState(true);
   const [user, setUser] = useState(null);
   const [today, setToday] = useState("");
+  const [openDoc, setOpenDoc] = useState(null); // For modal
 
   const handleLogout = async () => {
     try {
@@ -135,10 +138,32 @@ export default function Dashboard() {
               <div className="text-center text-slate-500 dark:text-slate-400">No documents uploaded in the last 7 days.</div>
             ) : (
               recentDocs.map((doc) => (
-                <DocCard key={doc.id} doc={doc} />
+                <DocCard key={doc.id} doc={doc} onViewSummary={() => setOpenDoc(doc)} />
               ))
             )}
           </div>
+              {/* Summary Modal */}
+              <Modal open={!!openDoc} onClose={() => setOpenDoc(null)}>
+                {openDoc && (
+                  <div className="flex flex-col md:flex-row w-full h-[80vh]">
+                    {/* PDF Viewer */}
+                    <div className="flex-1 min-w-[300px] bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-auto">
+                      <div className="text-center text-slate-500">PDF preview not available<br/>({openDoc.title})</div>
+                    </div>
+                    {/* Summary & Details */}
+                    <div className="flex-1 min-w-[300px] p-6 overflow-auto">
+                      <h2 className="text-xl font-bold mb-2 text-slate-900 dark:text-white">Summary</h2>
+                      <div className="mb-4 text-slate-700 dark:text-slate-200 whitespace-pre-line">{openDoc.summary || "No summary available."}</div>
+                      <h3 className="text-lg font-semibold mt-4 mb-1 text-slate-900 dark:text-white">Details</h3>
+                      <div className="text-sm text-slate-600 dark:text-slate-300">
+                        <div><b>File Name:</b> {openDoc.title}</div>
+                        <div><b>Uploaded:</b> {openDoc.meta}</div>
+                        {/* Add more details as needed */}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Modal>
         </main>
 
         {/* Right Panel (Desktop) */}
