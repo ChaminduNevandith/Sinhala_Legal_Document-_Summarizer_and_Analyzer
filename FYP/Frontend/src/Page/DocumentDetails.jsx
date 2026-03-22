@@ -7,15 +7,21 @@ export default function DocumentDetails() {
   const navigate = useNavigate();
   const tabs = useMemo(
     () => [
-      { id: "quick", label: "කෙටි සාරාංශය" },
-      { id: "highlights", label: "විශේෂ කරුණු" },
-      { id: "explanation", label: "පැහැදිලි කිරීම්" },
+      { id: "quick", label: "Quick Summary" },
+      { id: "highlights", label: "highlights" },
+      { id: "explanation", label: "Risk explanation" },
     ],
     []
   );
 
   const [activeTab, setActiveTab] = useState("quick");
   const [summary, setSummary] = useState([]);
+  const [analysis, setAnalysis] = useState({
+    rights: [],
+    obligations: [],
+    deadlines: [],
+    risks: []
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchParams] = useSearchParams();
@@ -28,13 +34,24 @@ export default function DocumentDetails() {
       try {
         const res = await client.get(`/api/documents/${docId}`);
         const doc = res.data?.document;
+        
+        // Process summary
         if (doc?.summary) {
-          // Try to split summary into bullet points if possible
           let items = doc.summary.split("\n").filter(Boolean);
           if (items.length === 1) items = doc.summary.split("•").filter(Boolean);
           setSummary(items);
         } else {
           setSummary(["No summary available."]);
+        }
+
+        // Process legal analysis
+        if (doc?.analysis) {
+          setAnalysis({
+            rights: Array.isArray(doc.analysis.rights) ? doc.analysis.rights : [],
+            obligations: Array.isArray(doc.analysis.obligations) ? doc.analysis.obligations : [],
+            deadlines: Array.isArray(doc.analysis.deadlines) ? doc.analysis.deadlines : [],
+            risks: Array.isArray(doc.analysis.risks) ? doc.analysis.risks : []
+          });
         }
       } catch (e) {
         setError(e.message || "Failed to load document");
@@ -127,7 +144,7 @@ export default function DocumentDetails() {
               {activeTab === "highlights" && (
                 <section className="space-y-4">
                   <h4 className="mb-4 text-lg font-bold text-slate-900 dark:text-white">
-                    විශේෂ කරුණු විශ්ලේෂණය
+                    Important highlights from the document
                   </h4>
 
                   {/* Rights */}
@@ -140,11 +157,17 @@ export default function DocumentDetails() {
                         ඔබගේ අයිතිවාසිකම් (Rights)
                       </span>
                     </div>
-                    <ul className="ml-5 list-disc space-y-2 text-sm text-slate-800 dark:text-white/90">
-                      <li>පූර්ව දැනුම්දීමකින් තොරව අයිතිකරුට නිවසට ඇතුළු වෙන්නේ පෙර ගෙවීමට අවශ්‍ය වේ.</li>
-                      <li>අත්තිකාරම් මුදල ගිවිසුම අවසානයේ ආපසු ලබාගත හැක.</li>
-                      <li>අත්‍යාවශ්‍ය නඩත්තු කටයුතු අයිතිකරු ලවා කරවා ගත හැක.</li>
-                    </ul>
+                    {loading ? (
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Loading rights...</p>
+                    ) : analysis.rights.length > 0 ? (
+                      <ul className="ml-5 list-disc space-y-2 text-sm text-slate-800 dark:text-white/90">
+                        {analysis.rights.map((right, idx) => (
+                          <li key={idx}>{right}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-slate-600 dark:text-slate-400">No rights identified.</p>
+                    )}
                   </div>
 
                   {/* Obligations */}
@@ -157,11 +180,17 @@ export default function DocumentDetails() {
                         ඔබට කළ යුතු දේ (Obligations)
                       </span>
                     </div>
-                    <ul className="ml-5 list-disc space-y-2 text-sm text-slate-800 dark:text-white/90">
-                      <li>සෑම මසකම 5 වන දිනට පෙර කුලී මුදල් ගෙවීම.</li>
-                      <li>නිවස සහ උපකරණ හානි නොවී පවත්වා ගැනීම.</li>
-                      <li>අසල්වාසීන්ට බාධා නොවන පරිදි හැසිරීම.</li>
-                    </ul>
+                    {loading ? (
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Loading obligations...</p>
+                    ) : analysis.obligations.length > 0 ? (
+                      <ul className="ml-5 list-disc space-y-2 text-sm text-slate-800 dark:text-white/90">
+                        {analysis.obligations.map((obligation, idx) => (
+                          <li key={idx}>{obligation}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-slate-600 dark:text-slate-400">No obligations identified.</p>
+                    )}
                   </div>
 
                   {/* Deadlines */}
@@ -174,11 +203,17 @@ export default function DocumentDetails() {
                         වැදගත් දිනයන් (Deadlines)
                       </span>
                     </div>
-                    <ul className="ml-5 list-disc space-y-2 text-sm text-slate-800 dark:text-white/90">
-                      <li>2025 දෙසැම්බර් 31 - ගිවිසුම අවසන් වන දිනය.</li>
-                      <li>සෑම මසකම 10 වන දින - ප්‍රමාද ගාස්තු අය කරන දිනය.</li>
-                      <li>ගිවිසුම අලුත් කිරීමට නම් මාස 2කට පෙර දැනුම් දිය යුතුය.</li>
-                    </ul>
+                    {loading ? (
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Loading deadlines...</p>
+                    ) : analysis.deadlines.length > 0 ? (
+                      <ul className="ml-5 list-disc space-y-2 text-sm text-slate-800 dark:text-white/90">
+                        {analysis.deadlines.map((deadline, idx) => (
+                          <li key={idx}>{deadline}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-slate-600 dark:text-slate-400">No deadlines identified.</p>
+                    )}
                   </div>
                 </section>
               )}
@@ -186,22 +221,19 @@ export default function DocumentDetails() {
               {activeTab === "explanation" && (
                 <section className="space-y-6">
                   <h4 className="mb-2 text-lg font-bold text-slate-900 dark:text-white">
-                    පො conj?? ප‍්‍රශ්න සහ පිළිතුරු
+                    Risk and actionable insights explained in simple language
                   </h4>
 
                   <div className="space-y-5">
-                    <QA
-                      q="ප්‍රශ්නය: මට කාලයට පෙර නිවසෙන් අයින් වෙන්න පුලුවන්ද?"
-                      a="ඔව්, ඔබට ඕනෑම වෙලාවක ඉවත් වෙන්නේ පෙර ගෙවීමට අවශ්‍ය වේ. නමුත් ගිවිසුම අනුව ඔබ මාස 3කට පෙර අයිතිකරුට ඒ පිළිබඳව ලිඛිතව දැනුම් දිය යුතුය. එසේ නොවුනහොත් අත්තිකාරම් මුදලින් කොටසක් අහිමි විය හැක."
-                    />
-                    <QA
-                      q="ප්‍රශ්නය: නිවසේ අලුත්වැඩියාවක් අවශ්‍ය වුවහොත් කුමක් කළ යුතුද?"
-                      a="කුඩා අලුත්වැඩියාවන් (විදුලි බුබුළු මාරු කිරීම වැනි) ඔබ විසින් සිදු කළ යුතුය. වහලය කාන්දු වීම වැනි විශාල අලුත්වැඩියාවන් අයිතිකරු විසින් සිදු කළ යුතු බැවින් වහාම ඔහුට දැනුම් දෙන්න."
-                    />
-                    <QA
-                      q="ප්‍රශ්නය: අත්තිකාරම් මුදල (Advance) ආපසු ලැබෙන්නේ කොහොමද?"
-                      a="ගිවිසුම අවසන් වී ඔබ නිවස භාර දෙන විට, නොගෙවූ බිල්පත් හෝ නිවසට සිදු වූ හානි ඇත්නම් ඒවාට අදාළ මුදල් අඩු කර ඉතිරිය ඔබට ලැබෙනු ඇත."
-                    />
+                    {loading ? (
+                      <p className="text-center text-slate-600 dark:text-slate-400">Loading risk analysis...</p>
+                    ) : analysis.risks.length > 0 ? (
+                      analysis.risks.map((risk, idx) => (
+                        <QA key={idx} q={`වැදගතක්: ${risk.substring(0, 60)}...`} a={risk} />
+                      ))
+                    ) : (
+                      <p className="text-center text-slate-600 dark:text-slate-400">No risks identified in the document.</p>
+                    )}
                   </div>
                 </section>
               )}

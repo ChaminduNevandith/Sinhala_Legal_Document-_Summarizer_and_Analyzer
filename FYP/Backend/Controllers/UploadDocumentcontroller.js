@@ -32,18 +32,35 @@ async function ensureDocumentsTable() {
 			created_at DATETIME NOT NULL,
 			-- optional summary of the document
 			summary LONGTEXT NULL,
+			-- legal analysis fields
+			rights JSON NULL,
+			obligations JSON NULL,
+			deadlines JSON NULL,
+			risks JSON NULL,
 			INDEX (user_id)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
 	);
 
-	// In case the table already existed without the summary column,
-	// attempt to add it. Ignore the error if the column is already there.
+	// Ensure summary column
 	try {
 		await query("ALTER TABLE documents ADD COLUMN summary LONGTEXT NULL");
 	} catch (e) {
 		const msg = String(e && e.message);
 		if (!msg.includes("Duplicate column") && !msg.includes("ER_DUP_FIELDNAME")) {
 			console.error("Failed to ensure summary column:", msg);
+		}
+	}
+
+	// Ensure legal analysis columns
+	const analysisColumns = ["rights", "obligations", "deadlines", "risks"];
+	for (const col of analysisColumns) {
+		try {
+			await query(`ALTER TABLE documents ADD COLUMN ${col} JSON NULL`);
+		} catch (e) {
+			const msg = String(e && e.message);
+			if (!msg.includes("Duplicate column") && !msg.includes("ER_DUP_FIELDNAME")) {
+				console.error(`Failed to ensure ${col} column:`, msg);
+			}
 		}
 	}
 }
@@ -115,8 +132,11 @@ async function uploadDocument(req, res) {
 		if (isPdf) fileType = "pdf";
 		else if (isDocx) fileType = "docx";
 		let summary = null;
+		let extractedText = null;
 		try {
-			summary = await summarizeDocument(tempFilePath, fileType);
+			const result = await summarizeDocument(tempFilePath, fileType);
+			summary = result.summary;
+			extractedText = result.extractedText;
 		} catch (e) {
 			console.error("Summarization error:", e);
 		}
@@ -130,7 +150,34 @@ async function uploadDocument(req, res) {
 				console.error("Failed to save summary to DB:", e && e.message);
 			}
 		}
-		// --- End summarization logic ---
+
+		// --- Legal analysis logic (use full extracted text for analysis) ---
+		let analysisResult = null;
+		try {
+			// Use FULL extracted text for analysis to find ALL keyword instances
+			// But only IDENTIFIED SECTIONS are saved to the database
+			const textForAnalysis = extractedText || summary || "";
+			analysisResult = await analyzeLegalDocument(textForAnalysis);
+			if (analysisResult) {
+				const { rights, obligations, deadlines, risks } = analysisResult;
+				// ✅ SAVE ONLY: Identified sections for each category (NOT full extracted text)
+				await query(
+					"UPDATE documents SET rights = ?, obligations = ?, deadlines = ?, risks = ? WHERE id = ?",
+					[
+						JSON.stringify(rights || []),      // Only identified right sections
+						JSON.stringify(obligations || []), // Only identified obligation sections
+						JSON.stringify(deadlines || []),   // Only identified deadline sections
+						JSON.stringify(risks || []),       // Only identified risk sections
+						result.insertId
+					]
+				);
+				console.log("Legal analysis saved for document:", result.insertId);
+				console.log("Identified: Rights:", rights?.length || 0, "| Obligations:", obligations?.length || 0, "| Deadlines:", deadlines?.length || 0, "| Risks:", risks?.length || 0);
+			}
+		} catch (e) {
+			console.error("Legal analysis error:", e);
+		}
+		// --- End legal analysis logic ---
 
 		return res.status(201).json({
 			message: "Document uploaded securely.",
@@ -140,7 +187,8 @@ async function uploadDocument(req, res) {
 				mime_type: file.mimetype,
 				size: file.size,
 				created_at: new Date().toISOString(),
-				summary: summary || null
+				summary: summary || null,
+				analysis: analysisResult || null
 			}
 		});
 	} catch (err) {
@@ -180,11 +228,93 @@ async function summarizeDocument(tempFilePath, fileType) {
 			if (code !== 0) return reject(error || `Python exited with code ${code}`);
 			try {
 				const result = JSON.parse(output);
-				if (result.summary) resolve(result.summary);
+				if (result.summary) {
+					resolve({
+						summary: result.summary,
+						extractedText: result.extracted_text || result.summary
+					});
+				}
 				else reject(result.error || "No summary returned");
 			} catch (e) { reject(e.message); }
 		});
 	});
+}
+
+async function analyzeLegalDocument(text) {
+	/**
+	 * Call the FastAPI legal analysis endpoint
+	 * Returns: { rights, obligations, deadlines, risks }
+	 */
+	if (!text || text.trim().length === 0) return null;
+
+	try {
+		const https = require("https");
+		const http = require("http");
+
+		const fastApiUrl = new URL(process.env.FASTAPI_URL || "http://127.0.0.1:8000/analyze-legal");
+		const isHttps = fastApiUrl.protocol === "https:";
+		const client = isHttps ? https : http;
+
+		const requestData = JSON.stringify({
+			text: text,
+			use_llm_refinement: true
+		});
+
+		return new Promise((resolve, reject) => {
+			const options = {
+				hostname: fastApiUrl.hostname,
+				port: fastApiUrl.port || (isHttps ? 443 : 80),
+				path: fastApiUrl.pathname,
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"Content-Length": Buffer.byteLength(requestData)
+				},
+				timeout: 120000 // 2 minutes timeout
+			};
+
+			const req = client.request(options, (res) => {
+				let data = "";
+				res.on("data", (chunk) => { data += chunk; });
+				res.on("end", () => {
+					if (res.statusCode === 200) {
+						try {
+							const result = JSON.parse(data);
+							resolve({
+								rights: result.rights || [],
+								obligations: result.obligations || [],
+								deadlines: result.deadlines || [],
+								risks: result.risks || []
+							});
+						} catch (e) {
+							console.error("Failed to parse legal analysis response:", e.message);
+							resolve(null);
+						}
+					} else {
+						console.error(`FastAPI returned status ${res.statusCode}`);
+						resolve(null);
+					}
+				});
+			});
+
+			req.on("error", (err) => {
+				console.error("Legal analysis request error:", err.message);
+				resolve(null);
+			});
+
+			req.on("timeout", () => {
+				req.abort();
+				console.error("Legal analysis request timeout");
+				resolve(null);
+			});
+
+			req.write(requestData);
+			req.end();
+		});
+	} catch (err) {
+		console.error("analyzeLegalDocument error:", err.message);
+		return null;
+	}
 }
 
 module.exports = { requireAuth, uploadDocument };

@@ -5,143 +5,178 @@ from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 import torch
 import uvicorn
 import os
-import re
+import pytesseract
 import traceback
+from typing import List, Dict
+import sys
+
+# Add Script directory to path for legal_analysis import
+sys.path.insert(0, os.path.dirname(__file__))
+from legal_analysis import analyze_legal_document, format_for_highlights, format_for_risks
+
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+LANG = "sin"
+
 
 app = FastAPI()
 
-
+# ✅ Load model once at startup (resolve path relative to this file)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # points to Backend/
-MODEL_PATH = os.path.join(BASE_DIR, "FYP_models", "Test_Model_2")
+MODEL_PATH = os.path.join(BASE_DIR, "FYP_models", "Test_Model_3")
 
-TASK_PREFIX = "සිංහල නීති ලේඛනය සාරාංශ කරන්න: "
-
-print("Loading model from:", MODEL_PATH)
+print("Loading model...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
 model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_PATH)
 
+# Fix generation config using the supported generation_config API.
+# Use a larger max_length so summaries don't get cut off early.
 model.generation_config.max_length = 1024
 model.generation_config.no_repeat_ngram_size = 3
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
 model.eval()
-print(f"✅ Model loaded on {device}")
-
-
+print(f"Model loaded on {device}")
 
 class SummarizeRequest(BaseModel):
     text: str
-    max_new_tokens: int = 256
+    # Larger defaults for fuller summaries. Increase with care: higher values
+    # mean slower generation, especially on CPU.
+    max_new_tokens: int = 512
     num_beams: int = 4
 
+    # Sampling controls (quality/creativity knobs)
+    # - do_sample=False => more deterministic; ignores temperature/top_p
+    # - temperature lower (~0.2-0.7) => more focused; higher => more creative
+    do_sample: bool = True
+    temperature: float = 0.7
+    top_p: float = 0.9
 
 class SummarizeResponse(BaseModel):
     summary: str
     input_tokens: int
     chunks_processed: int
 
+class LegalAnalysisRequest(BaseModel):
+    text: str
+    use_llm_refinement: bool = True
 
-def clean_ocr_text(text: str) -> str:
-    """
-    Remove common OCR artefacts from scanned Sinhala documents:
-      - Collapse multiple whitespace/newlines into a single space
-      - Drop lines that are pure symbols or very short (likely noise)
-      - Strip leading/trailing whitespace
-    """
-    # Normalise whitespace
-    text = re.sub(r'[ \t]+', ' ', text)          # multiple spaces → one
-    text = re.sub(r'\n{3,}', '\n\n', text)        # 3+ newlines → two
+class LegalAnalysisResponse(BaseModel):
+    rights: List[str]
+    obligations: List[str]
+    deadlines: List[str]
+    risks: List[str]
+    summary: Dict
+    highlights: Dict
+    risk_explanations: Dict
 
-    # Filter out noise lines
-    lines = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        # keep if it has at least 4 characters and contains a letter
-        if len(stripped) >= 4 and re.search(r'\w', stripped):
-            lines.append(stripped)
-
-    return ' '.join(lines).strip()
-
-
-
-def generate_summary(text: str, max_new_tokens: int, num_beams: int) -> str:
-    """Summarise a single chunk of text that fits within the model's window."""
+def generate_summary(
+    text: str,
+    max_new_tokens: int,
+    num_beams: int,
+    do_sample: bool,
+    temperature: float,
+    top_p: float,
+) -> str:
     inputs = tokenizer(
-        TASK_PREFIX + text,
+        text,
         return_tensors="pt",
-        max_length=2000,
-        truncation=True,
+        max_length=1024,   # 🔥 increased
+        truncation=True
     ).to(device)
 
     with torch.no_grad():
         output_ids = model.generate(
             inputs["input_ids"],
             attention_mask=inputs["attention_mask"],
+
             max_new_tokens=max_new_tokens,
-            min_length=30,          
+            min_length=int(max_new_tokens * 0.5),
+
             num_beams=num_beams,
-            early_stopping=True,
+
+            do_sample=do_sample,
+            top_p=top_p,
+            temperature=temperature,
+
             no_repeat_ngram_size=3,
-            repetition_penalty=2.0,  
-            length_penalty=0.8,      
-            forced_eos_token_id=tokenizer.eos_token_id,
+            repetition_penalty=1.2,
+            length_penalty=2.0,
+
+            eos_token_id=tokenizer.eos_token_id,
+            pad_token_id=tokenizer.pad_token_id
         )
 
-    return tokenizer.decode(output_ids[0], skip_special_tokens=True)
+    summary = tokenizer.decode(output_ids[0], skip_special_tokens=True)
 
+    # 🔥 Retry if summary too short (prevents broken outputs)
+    if len(summary.strip()) < 100:
+        output_ids = model.generate(
+            inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+            max_new_tokens=max_new_tokens,
+            num_beams=num_beams,
+            do_sample=do_sample,
+            top_p=top_p,
+            temperature=temperature,
+            no_repeat_ngram_size=3,
+            repetition_penalty=1.2,
+            length_penalty=2.0,
+            eos_token_id=tokenizer.eos_token_id,
+            pad_token_id=tokenizer.pad_token_id
+        )
+        summary = tokenizer.decode(output_ids[0], skip_special_tokens=True)
 
+    return summary
 
-CHUNK_SIZE = 250  
-OVERLAP    = 30
+def map_reduce_summarize(
+    text: str,
+    max_new_tokens: int,
+    num_beams: int,
+    do_sample: bool,
+    temperature: float,
+    top_p: float,
+):
+    tokens = tokenizer.encode(text)
 
+    chunk_size = 800   # 🔥 bigger chunks
+    overlap = 100
 
-def _split_into_chunks(text: str):
-    """Tokenise text and split into overlapping chunks."""
-    token_ids = tokenizer.encode(text, add_special_tokens=False)
     chunks = []
-    for i in range(0, len(token_ids), CHUNK_SIZE - OVERLAP):
-        chunk_ids = token_ids[i : i + CHUNK_SIZE]
-        chunks.append(tokenizer.decode(chunk_ids, skip_special_tokens=True))
-    return chunks
+    for i in range(0, len(tokens), chunk_size - overlap):
+        chunk_tokens = tokens[i:i + chunk_size]
+        chunk_text = tokenizer.decode(chunk_tokens, skip_special_tokens=True)
+        chunks.append(chunk_text)
 
+    print(f"Processing {len(chunks)} chunks...")
 
-def map_reduce_summarize(text: str, max_new_tokens: int, num_beams: int, depth: int = 0):
-    """
-    1. MAP  – summarise every chunk independently.
-    2. REDUCE – join chunk summaries; if still too long, recurse.
-
-    `depth` guards against infinite recursion (max 3 levels).
-    """
-    MAX_DEPTH = 3
-
-    chunks = _split_into_chunks(text)
-    total_input_tokens = len(tokenizer.encode(text, add_special_tokens=False))
-
-    print(f"[map_reduce depth={depth}] {len(chunks)} chunks, {total_input_tokens} tokens")
-
-    # ── MAP ──────────────────────────────────
+    # 🔹 MAP STEP (detailed summaries)
     chunk_summaries = []
-    for idx, chunk in enumerate(chunks):
-        print(f"  Summarising chunk {idx + 1}/{len(chunks)} …")
-        chunk_summaries.append(generate_summary(chunk, max_new_tokens, num_beams))
-
-    # ── REDUCE ───────────────────────────────
-    combined = " ".join(chunk_summaries)
-    combined_tokens = len(tokenizer.encode(combined, add_special_tokens=False))
-
-    if combined_tokens > 450 and depth < MAX_DEPTH:
-        # Still too long – recurse
-        final_summary, _, _ = map_reduce_summarize(
-            combined, max_new_tokens, num_beams, depth=depth + 1
+    for c in chunks:
+        summary = generate_summary(
+            c,
+            int(max_new_tokens * 0.7),
+            num_beams,
+            do_sample,
+            temperature,
+            top_p,
         )
-    else:
-        # Fits in one pass
-        final_summary = generate_summary(combined, max_new_tokens, num_beams)
+        chunk_summaries.append(summary)
 
-    return final_summary, total_input_tokens, len(chunks)
+    # 🔹 REDUCE STEP
+    combined = " ".join(chunk_summaries)
 
+    final_summary = generate_summary(
+        combined,
+        max_new_tokens,
+        num_beams,
+        do_sample,
+        temperature,
+        top_p,
+    )
 
+    return final_summary, len(tokens), len(chunks)
 
 @app.post("/summarize", response_model=SummarizeResponse)
 async def summarize(request: SummarizeRequest):
@@ -149,28 +184,36 @@ async def summarize(request: SummarizeRequest):
         if not request.text.strip():
             raise HTTPException(status_code=400, detail="Text cannot be empty")
 
-       
-        clean_text = clean_ocr_text(request.text)
+        # Basic guardrails (avoid invalid sampling settings causing runtime errors)
+        temperature = float(request.temperature)
+        top_p = float(request.top_p)
+        if temperature <= 0:
+            raise HTTPException(status_code=400, detail="temperature must be > 0")
+        if not (0 < top_p <= 1):
+            raise HTTPException(status_code=400, detail="top_p must be in (0, 1]")
 
-        if not clean_text:
-            raise HTTPException(status_code=400, detail="No usable text after cleaning")
+        token_count = len(tokenizer.encode(request.text))
 
-        token_count = len(tokenizer.encode(clean_text, add_special_tokens=False))
-        print(f"[/summarize] token_count={token_count}")
+        print(f"Token count: {token_count}")
 
-        if token_count > 450:
-            # Long document → map-reduce
+        # 🔥 smarter threshold
+        if token_count > 900:
             summary, input_tokens, chunks = map_reduce_summarize(
-                clean_text,
+                request.text,
                 request.max_new_tokens,
                 request.num_beams,
+                request.do_sample,
+                temperature,
+                top_p,
             )
         else:
-            # Short document → single pass
             summary = generate_summary(
-                clean_text,
+                request.text,
                 request.max_new_tokens,
                 request.num_beams,
+                request.do_sample,
+                temperature,
+                top_p,
             )
             input_tokens = token_count
             chunks = 1
@@ -178,21 +221,75 @@ async def summarize(request: SummarizeRequest):
         return SummarizeResponse(
             summary=summary,
             input_tokens=input_tokens,
-            chunks_processed=chunks,
+            chunks_processed=chunks
         )
 
-    except HTTPException:
-        raise
     except Exception as e:
         print("[FASTAPI_SUMMARIZE_ERROR]", repr(e))
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.get("/health")
 async def health():
     return {"status": "ok", "device": str(device)}
 
+@app.post("/analyze-legal", response_model=LegalAnalysisResponse)
+async def analyze_legal(request: LegalAnalysisRequest):
+    """
+    Hybrid legal document analysis: Rule-based + LLM refinement
+    Identifies Rights, Obligations, Deadlines, and Risks
+    """
+    try:
+        if not request.text.strip():
+            raise HTTPException(status_code=400, detail="Text cannot be empty")
+        
+        print("[Legal Analysis] Processing document...")
+        
+        # Run hybrid analysis
+        if request.use_llm_refinement:
+            analysis = analyze_legal_document(
+                request.text,
+                model_callable=model,
+                tokenizer_callable=tokenizer,
+                device=device
+            )
+        else:
+            # Rule-based only
+            from legal_analysis import rule_based_extraction
+            rule_results = rule_based_extraction(request.text)
+            analysis = {
+                "rights": [r["text"] for r in rule_results["rights"]],
+                "obligations": [o["text"] for o in rule_results["obligations"]],
+                "deadlines": [d["text"] for d in rule_results["deadlines"]],
+                "risks": [r["text"] for r in rule_results["risks"]],
+                "summary": {
+                    "total_rights": len(rule_results["rights"]),
+                    "total_obligations": len(rule_results["obligations"]),
+                    "total_deadlines": len(rule_results["deadlines"]),
+                    "total_risks": len(rule_results["risks"])
+                }
+            }
+        
+        # Format for frontend
+        highlights = format_for_highlights(analysis)
+        risk_explanations = format_for_risks(analysis)
+        
+        print(f"[Legal Analysis] Completed: {analysis['summary']}")
+        
+        return LegalAnalysisResponse(
+            rights=analysis["rights"],
+            obligations=analysis["obligations"],
+            deadlines=analysis["deadlines"],
+            risks=analysis["risks"],
+            summary=analysis["summary"],
+            highlights=highlights,
+            risk_explanations=risk_explanations
+        )
+    
+    except Exception as e:
+        print("[LEGAL_ANALYSIS_ERROR]", repr(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

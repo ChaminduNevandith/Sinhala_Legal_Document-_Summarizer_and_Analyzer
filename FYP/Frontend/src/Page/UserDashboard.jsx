@@ -1,14 +1,25 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import client from "../api/client";
-import SidebarItem from "../Components/SidebarItem.jsx";
+import Sidebar from "../Components/Sidebar.jsx";
 import StatCard from "../Components/StatCard.jsx";
 import DocCard from "../Components/DocCard.jsx";
+import Modal from "../Components/Modal.jsx";
+
 import BottomNavItem from "../Components/BottomNavItem.jsx";
 import TopAppBar from "../Components/TopAppBar.jsx";
 
+
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [recentDocs, setRecentDocs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [totalDocs, setTotalDocs] = useState(0);
+  const [loadingTotal, setLoadingTotal] = useState(true);
+  const [user, setUser] = useState(null);
+  const [today, setToday] = useState("");
+  const [openDoc, setOpenDoc] = useState(null); // For modal
 
   const handleLogout = async () => {
     try {
@@ -18,36 +29,58 @@ export default function Dashboard() {
       console.error("Logout failed:", err?.message || err);
     }
   };
-  const recentDocs = [
-    {
-      id: 1,
-      title: "ඉඩම් ඔප්පුව - අංක 452",
-      meta: "2023 ඔක්තෝබර් 12 • 1.2 MB",
-      status: "ready",
-      icon: "description",
-    },
-    {
-      id: 2,
-      title: "රැකියා ගිවිසුම - 2024",
-      meta: "මීට සුළු මොහොතකට පෙර",
-      status: "processing",
-      icon: "sync",
-    },
-    {
-      id: 3,
-      title: "කුලී ගිවිසුම - මොරටුව",
-      meta: "2023 සැප්තැම්බර් 28",
-      status: "ready",
-      icon: "gavel",
-    },
-  ];
+
+  useEffect(() => {
+    async function fetchRecentDocs() {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await client.get("/api/getdocuments/recent");
+        setRecentDocs(res.data.documents || []);
+      } catch (err) {
+        setError(err.message || "Failed to load documents");
+      } finally {
+        setLoading(false);
+      }
+    }
+    async function fetchTotalDocs() {
+      setLoadingTotal(true);
+      try {
+        const res = await client.get("/api/getdocuments/total");
+        setTotalDocs(res.data.total || 0);
+      } catch {
+        setTotalDocs(0);
+      } finally {
+        setLoadingTotal(false);
+      }
+    }
+    async function fetchUser() {
+      try {
+        const res = await client.get("/api/auth/me");
+        setUser(res.data.user);
+      } catch {
+        setUser(null);
+      }
+    }
+    function getToday() {
+      const d = new Date();
+      // Format: YYYY-MM-DD or localize as needed
+      return d.toLocaleDateString('en-CA');
+    }
+    fetchRecentDocs();
+    fetchTotalDocs();
+    fetchUser();
+    setToday(getToday());
+  }, []);
+
+  const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   return (
     <div className="min-h-screen  text-slate-900 dark:bg-background-dark dark:text-slate-100">
       {/* Top App Bar */}
       <TopAppBar
-        title="ආයුබෝවන්, අමිල"
-        subtitle="අද දිනය: ඔක්තෝබර් 24"
+        title={user ? `Welcome, ${user.name}` : "Welcome"}
+        subtitle={today ? `Today's date: ${today}` : ""}
         avatarUrl="https://lh3.googleusercontent.com/aida-public/AB6AXuBt-RmcjepGTTtxHmbkNM6QwQ4qvX6kU9SXXkSKY_EkVJjBHcfZRQqNP_I3otZrh1W-kq5SsVVZdrLLW4javun_4_Ht7BkJ-Qcif4zlBSrRf1CV9y-btLr201_wBUwY1J8QRLIvE_tyvMHJLxB7KYCmTfeAlBViGpkSHtW9IxDyjG3wZhMy4u3g4BMumOOPGnPOMB0RXM2Lqi4-KP1oSLgjgX_LFiLUoY8hHEq8N_oVhY8qawaQa8YEzsOlLAHfe6uKnqVNfc2596k"
         onNotificationsClick={() => {
           // TODO: Hook into notifications panel when implemented
@@ -59,15 +92,8 @@ export default function Dashboard() {
       {/* Page Layout */}
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 pb-24 pt-6 lg:grid-cols-[260px_1fr_320px] lg:pb-10">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:sticky lg:top-[88px] lg:block lg:h-[calc(100vh-88px)]">
-          <div className="rounded-2xl border border-slate-200 bg-[#1c2027] p-4 shadow-sm dark:border-slate-800 dark:bg-surface-dark">
-            <nav className="space-y-2">
-              <SidebarItem active icon="home" label="මුල් පිටුව" />
-              <SidebarItem icon="folder" label="ලේඛනාගාරය" />
-              <SidebarItem icon="help" label="උදව්" />
-              <SidebarItem icon="settings" label="සැකසුම්" />
-            </nav>
-          </div>
+        <aside className="hidden lg:sticky lg:top-22 lg:block lg:h-[calc(100vh-88px)]">
+          <Sidebar />
         </aside>
 
         {/* Main */}
@@ -76,7 +102,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <StatCard
               title="මුළු ලේඛන"
-              value="12"
+              value={loadingTotal ? "..." : totalDocs}
               icon="description"
               valueClassName="text-slate-900 dark:text-white"
               iconClassName="text-primary"
@@ -106,15 +132,65 @@ export default function Dashboard() {
 
           {/* Document List */}
           <div className="space-y-3">
-            {recentDocs.map((doc) => (
-              <DocCard key={doc.id} doc={doc} />
-            ))}
+            {loading ? (
+              <div className="text-center text-slate-500 dark:text-slate-400">Loading...</div>
+            ) : error ? (
+              <div className="text-center text-red-500">{error}</div>
+            ) : recentDocs.length === 0 ? (
+              <div className="text-center text-slate-500 dark:text-slate-400">No documents uploaded in the last 7 days.</div>
+            ) : (
+              recentDocs.map((doc) => (
+                <DocCard key={doc.id} doc={doc} onViewSummary={() => setOpenDoc(doc)} />
+              ))
+            )}
           </div>
+              {/* Summary Modal */}
+              <Modal open={!!openDoc} onClose={() => setOpenDoc(null)}>
+                {openDoc && (
+                  <div className="flex flex-col md:flex-row w-full h-[80vh]">
+                    {/* PDF Viewer */}
+                    <div className="flex-1 min-w-75 bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-auto">
+                      {String(openDoc.mimeType || "").includes("pdf") || String(openDoc.title || "").toLowerCase().endsWith(".pdf") ? (
+                        <iframe
+                          key={openDoc.id}
+                          title={openDoc.title || "Document"}
+                          className="h-full w-full"
+                          src={`${apiBaseUrl}/api/documents/${openDoc.id}/file`}
+                        />
+                      ) : (
+                        <div className="text-center text-slate-500 px-6">
+                          Preview not available for this file type.
+                          <div className="mt-2 text-xs">({openDoc.title})</div>
+                          <a
+                            className="mt-4 inline-flex items-center justify-center rounded-lg bg-primary/10 px-4 py-2 text-sm font-bold text-primary hover:bg-primary/20"
+                            href={`${apiBaseUrl}/api/documents/${openDoc.id}/file`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Download
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                    {/* Summary & Details */}
+                    <div className="flex-1 min-w-75 p-6 overflow-auto">
+                      <h2 className="text-xl font-bold mb-2 text-slate-900 dark:text-white">Summary</h2>
+                      <div className="mb-4 text-slate-700 dark:text-slate-200 whitespace-pre-line">{openDoc.summary || "No summary available."}</div>
+                      <h3 className="text-lg font-semibold mt-4 mb-1 text-slate-900 dark:text-white">Details</h3>
+                      <div className="text-sm text-slate-600 dark:text-slate-300">
+                        <div><b>File Name:</b> {openDoc.title}</div>
+                        <div><b>Uploaded:</b> {openDoc.meta}</div>
+                        {/* Add more details as needed */}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Modal>
         </main>
 
         {/* Right Panel (Desktop) */}
         <aside className="hidden lg:block">
-          <div className="sticky top-[88px] space-y-4">
+          <div className="sticky top-22 space-y-4">
             <div className="rounded-2xl border border-slate-200 bg-[#1c2027] p-4 shadow-sm dark:border-slate-800 dark:bg-surface-dark">
               <p className="text-sm font-semibold  text-slate-900 dark:text-white">
                 Quick Actions

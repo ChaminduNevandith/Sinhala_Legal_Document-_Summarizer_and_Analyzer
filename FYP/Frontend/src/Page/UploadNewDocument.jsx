@@ -117,7 +117,7 @@ export default function UploadNewDocument() {
                   </span>
                 </div>
 
-                <div className="flex max-w-[520px] flex-col items-center gap-2">
+                <div className="flex max-w-130 flex-col items-center gap-2">
                   <p className="text-center text-lg font-bold leading-tight">
                     Drag &amp; drop or click to upload
                   </p>
@@ -137,7 +137,7 @@ export default function UploadNewDocument() {
                 <button
                   type="button"
                   onClick={onBrowseClick}
-                  className="flex h-11 min-w-[160px] items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-lg shadow-primary/20"
+                  className="flex h-11 min-w-40 items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-lg shadow-primary/20"
                 >
                   Browse file
                 </button>
@@ -181,11 +181,11 @@ export default function UploadNewDocument() {
                     <iframe
                       title="PDF Preview"
                       src={previewUrl}
-                      className="h-[480px] w-full rounded-lg border border-slate-200 dark:border-slate-700"
+                      className="h-[70vh] w-full rounded-lg border border-slate-200 dark:border-slate-700"
                     />
                   )}
                   {!previewUrl && (
-                    <div className="max-h-[480px] overflow-auto rounded-lg border border-slate-200 p-4 dark:border-slate-700">
+                    <div className="max-h-[70vh] overflow-auto rounded-lg border border-slate-200 p-4 dark:border-slate-700">
                       {isConverting ? (
                         <p className="text-sm text-slate-500 dark:text-slate-400">Converting DOCX to preview…</p>
                       ) : (
