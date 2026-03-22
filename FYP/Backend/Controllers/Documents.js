@@ -76,7 +76,7 @@ async function getRecentDocuments(req, res) {
 
 		// Get documents from the last 7 days
 		const docs = await query(
-			`SELECT id, name, mime_type, size, created_at, summary
+			`SELECT id, name, mime_type, size, created_at, summary, rights, obligations, deadlines, risks
 			 FROM documents
 			 WHERE user_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
 			 ORDER BY created_at DESC`,
@@ -92,6 +92,12 @@ async function getRecentDocuments(req, res) {
 			status: "ready", // You can adjust this if you have a processing state
 			icon: "description", // Or choose based on mime_type
 			summary: doc.summary || null,
+			analysis: {
+				rights: doc.rights ? JSON.parse(doc.rights) : [],
+				obligations: doc.obligations ? JSON.parse(doc.obligations) : [],
+				deadlines: doc.deadlines ? JSON.parse(doc.deadlines) : [],
+				risks: doc.risks ? JSON.parse(doc.risks) : []
+			}
 		}));
 
 		return res.json({ documents: mapped });
@@ -108,7 +114,7 @@ async function getAllDocuments(req, res) {
 		if (!userId) return res.status(401).json({ message: "Not authenticated." });
 
 		const docs = await query(
-			`SELECT id, name, mime_type, size, created_at, summary
+			`SELECT id, name, mime_type, size, created_at, summary, rights, obligations, deadlines, risks
 			 FROM documents
 			 WHERE user_id = ?
 			 ORDER BY created_at DESC`,
@@ -123,6 +129,12 @@ async function getAllDocuments(req, res) {
 			status: "ready",
 			icon: "description",
 			summary: doc.summary || null,
+			analysis: {
+				rights: doc.rights ? JSON.parse(doc.rights) : [],
+				obligations: doc.obligations ? JSON.parse(doc.obligations) : [],
+				deadlines: doc.deadlines ? JSON.parse(doc.deadlines) : [],
+				risks: doc.risks ? JSON.parse(doc.risks) : []
+			}
 		}));
 
 		return res.json({ documents: mapped });
@@ -142,12 +154,23 @@ async function getDocumentById(req, res) {
 		if (!docId) return res.status(400).json({ message: "Invalid document id." });
 
 		const rows = await query(
-			"SELECT id, user_id, name, mime_type, size, created_at, doc_type, query_text, summary FROM documents WHERE id = ? AND user_id = ? LIMIT 1",
+			"SELECT id, user_id, name, mime_type, size, created_at, doc_type, query_text, summary, rights, obligations, deadlines, risks FROM documents WHERE id = ? AND user_id = ? LIMIT 1",
 			[docId, userId]
 		);
 		if (!rows || rows.length === 0) return res.status(404).json({ message: "Document not found." });
 
-		return res.json({ document: rows[0] });
+		const doc = rows[0];
+		return res.json({ 
+			document: {
+				...doc,
+				analysis: {
+					rights: doc.rights ? JSON.parse(doc.rights) : [],
+					obligations: doc.obligations ? JSON.parse(doc.obligations) : [],
+					deadlines: doc.deadlines ? JSON.parse(doc.deadlines) : [],
+					risks: doc.risks ? JSON.parse(doc.risks) : []
+				}
+			}
+		});
 	} catch (err) {
 		console.error("Get document by id error:", err.message);
 		return res.status(500).json({ message: "Internal server error." });

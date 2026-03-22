@@ -7,6 +7,12 @@ import uvicorn
 import os
 import pytesseract
 import traceback
+from typing import List, Dict
+import sys
+
+# Add Script directory to path for legal_analysis import
+sys.path.insert(0, os.path.dirname(__file__))
+from legal_analysis import analyze_legal_document, format_for_highlights, format_for_risks
 
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
@@ -51,6 +57,19 @@ class SummarizeResponse(BaseModel):
     summary: str
     input_tokens: int
     chunks_processed: int
+
+class LegalAnalysisRequest(BaseModel):
+    text: str
+    use_llm_refinement: bool = True
+
+class LegalAnalysisResponse(BaseModel):
+    rights: List[str]
+    obligations: List[str]
+    deadlines: List[str]
+    risks: List[str]
+    summary: Dict
+    highlights: Dict
+    risk_explanations: Dict
 
 def generate_summary(
     text: str,
@@ -213,6 +232,64 @@ async def summarize(request: SummarizeRequest):
 @app.get("/health")
 async def health():
     return {"status": "ok", "device": str(device)}
+
+@app.post("/analyze-legal", response_model=LegalAnalysisResponse)
+async def analyze_legal(request: LegalAnalysisRequest):
+    """
+    Hybrid legal document analysis: Rule-based + LLM refinement
+    Identifies Rights, Obligations, Deadlines, and Risks
+    """
+    try:
+        if not request.text.strip():
+            raise HTTPException(status_code=400, detail="Text cannot be empty")
+        
+        print("[Legal Analysis] Processing document...")
+        
+        # Run hybrid analysis
+        if request.use_llm_refinement:
+            analysis = analyze_legal_document(
+                request.text,
+                model_callable=model,
+                tokenizer_callable=tokenizer,
+                device=device
+            )
+        else:
+            # Rule-based only
+            from legal_analysis import rule_based_extraction
+            rule_results = rule_based_extraction(request.text)
+            analysis = {
+                "rights": [r["text"] for r in rule_results["rights"]],
+                "obligations": [o["text"] for o in rule_results["obligations"]],
+                "deadlines": [d["text"] for d in rule_results["deadlines"]],
+                "risks": [r["text"] for r in rule_results["risks"]],
+                "summary": {
+                    "total_rights": len(rule_results["rights"]),
+                    "total_obligations": len(rule_results["obligations"]),
+                    "total_deadlines": len(rule_results["deadlines"]),
+                    "total_risks": len(rule_results["risks"])
+                }
+            }
+        
+        # Format for frontend
+        highlights = format_for_highlights(analysis)
+        risk_explanations = format_for_risks(analysis)
+        
+        print(f"[Legal Analysis] Completed: {analysis['summary']}")
+        
+        return LegalAnalysisResponse(
+            rights=analysis["rights"],
+            obligations=analysis["obligations"],
+            deadlines=analysis["deadlines"],
+            risks=analysis["risks"],
+            summary=analysis["summary"],
+            highlights=highlights,
+            risk_explanations=risk_explanations
+        )
+    
+    except Exception as e:
+        print("[LEGAL_ANALYSIS_ERROR]", repr(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

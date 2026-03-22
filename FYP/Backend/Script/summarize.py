@@ -91,7 +91,14 @@ if __name__ == "__main__":
         print(json.dumps({"error": "file_path and file_type required"}))
         sys.exit(1)
 
-    text = extract_text(file_path, file_type)
-    summary = summarize_via_fastapi(text)
+    # Extract full text from document
+    extracted_text = extract_text(file_path, file_type)
+    
+    # Generate summary from extracted text
+    summary = summarize_via_fastapi(extracted_text)
 
-    print(json.dumps({"summary": summary}))
+    # Return BOTH extracted text and summary
+    print(json.dumps({
+        "summary": summary,
+        "extracted_text": extracted_text
+    }))
