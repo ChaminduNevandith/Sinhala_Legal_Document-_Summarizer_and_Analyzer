@@ -1,6 +1,25 @@
 import sys
 import json
 import os
+import re
+
+
+def clean_sinhala_text(text):
+    """Post-OCR cleanup for Sinhala text"""
+    # Remove repeated characters (නීනීනී → නී)
+    text = re.sub(r'(.)\1{2,}', r'\1', text)
+
+    # Fix common OCR issues
+    text = text.replace("මාර්නූ", "මාර්තු")
+    text = text.replace("ජානික", "ජාතික")
+
+    # Remove weird punctuation noise
+    text = re.sub(r'[^\u0D80-\u0DFF0-9.,:;()\s/-]', '', text)
+
+    # Fix spacing
+    text = re.sub(r'\s+', ' ', text)
+
+    return text.strip()
 
 
 def extract_text_ocr_page_wise(pdf_path, txt_path):
@@ -16,6 +35,9 @@ def extract_text_ocr_page_wise(pdf_path, txt_path):
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
+    # Tesseract config for improved OCR accuracy
+    custom_config = r'--oem 3 --psm 6'
+
     pages = convert_from_path(pdf_path)
     page_texts = []
 
@@ -24,7 +46,16 @@ def extract_text_ocr_page_wise(pdf_path, txt_path):
         page.save(img_path, "PNG")
 
         img = cv2.imread(img_path)
-        text = pytesseract.image_to_string(img, lang="sin")
+        
+        # Pre-OCR preprocessing
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
+        
+        # OCR with custom config
+        text = pytesseract.image_to_string(thresh, lang="sin", config=custom_config)
+        
+        # Post-OCR cleanup
+        text = clean_sinhala_text(text)
 
         page_texts.append(text)
         os.remove(img_path)
