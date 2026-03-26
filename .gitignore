@@ -142,3 +142,4 @@ vite.config.ts.timestamp-*
 # Ignore Test_Model_2 config file
 FYP/Backend/FYP_models/Test_Model_2/pytorch_model.bin
 FYP/Backend/FYP_models/Test_Model_3/pytorch_model.bin
+FYP/Backend/FYP_models/Test_Model_4/pytorch_model.bin

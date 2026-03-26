@@ -123,10 +123,12 @@ async function uploadDocument(req, res) {
 		const result = await query(sql, params);
 
 		// --- Summarization logic ---
-		// Save decrypted file temporarily
+		// Save decrypted file temporarily with safe filename (no special chars)
 		const tempDir = path.join(__dirname, "../FYP_models/tmp");
 		if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
-		const tempFilePath = path.join(tempDir, `${Date.now()}_${file.originalname}`);
+		const fileExtension = isPdf ? ".pdf" : ".docx";
+		const safeFilename = `temp_${Date.now()}${fileExtension}`;
+		const tempFilePath = path.join(tempDir, safeFilename);
 		fs.writeFileSync(tempFilePath, file.buffer);
 		let fileType = null;
 		if (isPdf) fileType = "pdf";
