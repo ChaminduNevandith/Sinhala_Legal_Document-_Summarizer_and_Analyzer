@@ -23,9 +23,9 @@ LANG = "sin"
 
 app = FastAPI()
 
-# ✅ Load model once at startup (resolve path relative to this file)
+#  Load model once at startup (resolve path relative to this file)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # points to Backend/
-MODEL_PATH = os.path.join(BASE_DIR, "FYP_models", "Test_Model_3")
+MODEL_PATH = os.path.join(BASE_DIR, "FYP_models", "Test_Model_4")
 
 print("Loading model...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)

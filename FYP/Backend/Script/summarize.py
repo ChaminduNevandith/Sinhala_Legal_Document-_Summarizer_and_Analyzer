@@ -1,7 +1,45 @@
+from pydoc import text
 import sys
 import json
 import os
 import re
+
+
+SYSTEM_PROMPT = """
+ඔබගේ කාර්යය නීතිමය ලේඛන සරළ ලෙස ජනතාවට තේරුම් ගත හැකි ලෙස පැහැදිලි කිරීමයි.
+
+- සරළ සිංහල භාෂාව භාවිතා කරන්න
+- නීතිමය ගැඹුරු වචන වලක්වන්න
+- වැදගත් කරුණු පමණක් දක්වන්න
+- අනවශ්‍ය හැඳින්වීම් (උදා: "මෙම නීතිමය දැනුම්දීම...") භාවිතා නොකරන්න
+- පිළිතුර සෘජුවම ආරම්භ කරන්න
+"""
+
+
+def build_summarization_prompt(document_text: str) -> str:
+    document_text = (document_text or "").strip()
+
+    return f"""
+{SYSTEM_PROMPT}
+
+පහත ලේඛනය සරළව පැහැදිලි කරන්න.
+
+⚠️ වැදගත්:
+- "මෙම නීතිමය/රාජ්‍ය දැනුම්දීම..." වැනි වාක්‍ය භාවිතා නොකරන්න
+- පිළිතුර සෘජුවම කරුණු වලින් ආරම්භ කරන්න
+- සාමාන්‍ය පුද්ගලයෙකුට පහසුවෙන් තේරෙන ලෙස ලියන්න
+
+📌 ආකෘතිය:
+
+• කවුද සම්බන්ධ වෙන්නේ:
+• කාර්යය මොනවද:
+• ගෙවීම්:
+• කාල සීමාව:
+• වගකීම් / අවදානම්:
+
+📄 ලේඛනය:
+{document_text}
+"""
 
 
 def clean_sinhala_text(text):
@@ -112,8 +150,10 @@ def summarize_via_fastapi_page_wise(pages: list) -> str:
     if not pages or all(not p.strip() for p in pages):
         return ""
 
+    prompted_pages = [build_summarization_prompt(p) if (p or "").strip() else "" for p in pages]
+
     payload = {
-        "pages": pages,
+        "pages": prompted_pages,
         "max_new_tokens": 1500,
         "num_beams": 6,
         "do_sample": False,
@@ -138,16 +178,7 @@ def summarize_via_fastapi(text: str) -> str:
         return ""
 
     payload = {
-        "text": f"""
-            පහත නීතිමය ලේඛනයක් සාරාංශ කරන්න.
-            - පැහැදිලි හා නිවැරදි සිංහල භාෂාවෙන් ලියන්න
-            - පුනරාවර්තන වලක්වන්න
-            - වැදගත් කරුණු පමණක් ලබා දෙන්න
-            - නීතිමය ශෛලියෙන් ලියන්න
-
-            ලේඛනය:
-            {text}
-            """,
+        "text": build_summarization_prompt(text),
     }
 
     response = requests.post(url, json=payload, timeout=6000)
