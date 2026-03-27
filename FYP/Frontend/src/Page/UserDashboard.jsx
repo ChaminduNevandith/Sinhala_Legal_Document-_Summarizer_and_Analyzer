@@ -18,18 +18,7 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [totalDocs, setTotalDocs] = useState(0);
   const [loadingTotal, setLoadingTotal] = useState(true);
-  const [user, setUser] = useState(null);
-  const [today, setToday] = useState("");
   const [openDoc, setOpenDoc] = useState(null); // For modal
-
-  const handleLogout = async () => {
-    try {
-      await client.post("/api/auth/logout");
-      navigate("/login", { replace: true });
-    } catch (err) {
-      console.error("Logout failed:", err?.message || err);
-    }
-  };
 
   useEffect(() => {
     async function fetchRecentDocs() {
@@ -55,23 +44,8 @@ export default function Dashboard() {
         setLoadingTotal(false);
       }
     }
-    async function fetchUser() {
-      try {
-        const res = await client.get("/api/auth/me");
-        setUser(res.data.user);
-      } catch {
-        setUser(null);
-      }
-    }
-    function getToday() {
-      const d = new Date();
-      // Format: YYYY-MM-DD or localize as needed
-      return d.toLocaleDateString('en-CA');
-    }
     fetchRecentDocs();
     fetchTotalDocs();
-    fetchUser();
-    setToday(getToday());
   }, []);
 
   const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -103,14 +77,11 @@ export default function Dashboard() {
     <div className="min-h-screen  text-slate-900 dark:bg-background-dark dark:text-slate-100">
       {/* Top App Bar */}
       <TopAppBar
-        title={user ? `Welcome, ${user.name}` : "Welcome"}
-        subtitle={today ? `Today's date: ${today}` : ""}
         avatarUrl="https://lh3.googleusercontent.com/aida-public/AB6AXuBt-RmcjepGTTtxHmbkNM6QwQ4qvX6kU9SXXkSKY_EkVJjBHcfZRQqNP_I3otZrh1W-kq5SsVVZdrLLW4javun_4_Ht7BkJ-Qcif4zlBSrRf1CV9y-btLr201_wBUwY1J8QRLIvE_tyvMHJLxB7KYCmTfeAlBViGpkSHtW9IxDyjG3wZhMy4u3g4BMumOOPGnPOMB0RXM2Lqi4-KP1oSLgjgX_LFiLUoY8hHEq8N_oVhY8qawaQa8YEzsOlLAHfe6uKnqVNfc2596k"
         onNotificationsClick={() => {
           // TODO: Hook into notifications panel when implemented
           console.log("Notifications clicked");
         }}
-        onLogoutClick={handleLogout}
       />
 
       {/* Page Layout */}

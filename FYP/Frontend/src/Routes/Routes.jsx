@@ -8,6 +8,7 @@ import UploadNewDocument from "../Page/UploadNewDocument.jsx";
 import DocumentDetails from "../Page/DocumentDetails.jsx";
 import History from "../Page/History.jsx";
 import Settings from "../Page/Settings.jsx";
+import Help from "../Page/Help.jsx";
 import client from "../api/client";
 
 function ProtectedRoute({ children }) {
@@ -44,6 +45,7 @@ export default function Routes() {
                 <Route path="/" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
                 <Route path="/upload" element={<ProtectedRoute><UploadNewDocument /></ProtectedRoute>} />
 				<Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+				<Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
 				<Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 				<Route path="/document" element={<ProtectedRoute><DocumentDetails /></ProtectedRoute>} />
 			</RouterRoutes>

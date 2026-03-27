@@ -74,7 +74,7 @@ export default function Settings() {
 
 	return (
 		<div className="min-h-screen text-slate-900 dark:bg-background-dark dark:text-slate-100">
-			<TopAppBar title="Settings" onNotificationsClick={() => {}} />
+			<TopAppBar onNotificationsClick={() => {}} />
 
 			<div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 pb-24 pt-6 lg:grid-cols-[260px_1fr] lg:pb-10">
 				<aside className="hidden lg:sticky lg:top-22 lg:block lg:h-[calc(100vh-88px)]">

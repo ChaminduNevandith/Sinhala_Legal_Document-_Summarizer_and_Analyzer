@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import client from "../api/client";
 import * as mammoth from "mammoth/mammoth.browser";
-import TopAppBar from "../Components/TopAppBar";
+import TopAppBar from "../Components/TopAppBar.jsx";
 
 export default function UploadNewDocument() {
   const navigate = useNavigate();
@@ -13,7 +13,6 @@ export default function UploadNewDocument() {
   const [previewUrl, setPreviewUrl] = useState(""); // for PDFs
   const [docxHtml, setDocxHtml] = useState(""); // for DOCX
   const [docType, setDocType] = useState("contract");
-  const [queryText, setQueryText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
 
@@ -27,9 +26,11 @@ export default function UploadNewDocument() {
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
-    const allowedExt = [".pdf", ".docx"];
-    const nameOk = allowedExt.some((ext) => f.name?.toLowerCase().endsWith(ext));
-    return allowedMime.includes(f.type) || nameOk;
+    const allowedExt = [".pdf", ".docx", ".png", ".jpg", ".jpeg", ".webp"];
+    const lowerName = (f.name || "").toLowerCase();
+    const nameOk = allowedExt.some((ext) => lowerName.endsWith(ext));
+    const isImageMime = typeof f.type === "string" && f.type.startsWith("image/");
+    return allowedMime.includes(f.type) || isImageMime || nameOk;
   };
 
   const handleSelectedFile = async (f) => {
@@ -38,7 +39,7 @@ export default function UploadNewDocument() {
     resetPreview();
 
     if (!isSupportedType(f)) {
-      setError("Only PDF and DOCX files are allowed.");
+      setError("Only PDF, DOCX, or image files are allowed.");
       setFile(null);
       return;
     }
@@ -48,7 +49,10 @@ export default function UploadNewDocument() {
     if (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf")) {
       const url = URL.createObjectURL(f);
       setPreviewUrl(url);
-    } else {
+    } else if (
+      f.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      f.name.toLowerCase().endsWith(".docx")
+    ) {
       // DOCX: convert to HTML using mammoth
       try {
         setIsConverting(true);
@@ -60,6 +64,10 @@ export default function UploadNewDocument() {
       } finally {
         setIsConverting(false);
       }
+    } else {
+      // Images: preview using object URL
+      const url = URL.createObjectURL(f);
+      setPreviewUrl(url);
     }
   };
 
@@ -92,68 +100,64 @@ export default function UploadNewDocument() {
   return (
     <div className="min-h-screen bg-background-light text-slate-900 dark:bg-background-dark dark:text-white">
       {/* Top App Bar */}
-      <TopAppBar
-        title="ආයුබෝවන්, අමිල"
-        subtitle="අද දිනය: ඔක්තෝබර් 24"
-        onNotificationsClick={() => {}}
-        onLogoutClick={() => {}}
-        className="mx-auto w-full "
-      />
+      <TopAppBar onNotificationsClick={() => {}} className="mx-auto w-full " />
 
       {/* Page */}
       <div className="mx-auto w-full max-w-6xl px-4 py-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           {/* Left: Upload area */}
           <section className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1c2027]/60">
-              <div
-                className="flex flex-col items-center gap-6 rounded-xl border-2 border-dashed border-slate-300 bg-white/50 px-6 py-12 transition-all hover:border-primary/50 dark:border-[#3b4554] dark:bg-[#1c2027]/30"
-                onDrop={onDrop}
-                onDragOver={onDragOver}
-              >
-                <div className="rounded-full bg-primary/10 p-4">
-                  <span className="material-symbols-outlined text-4xl text-primary">
-                    cloud_upload
-                  </span>
-                </div>
-
-                <div className="flex max-w-130 flex-col items-center gap-2">
-                  <p className="text-center text-lg font-bold leading-tight">
-                    Drag &amp; drop or click to upload
-                  </p>
-                  <p className="text-center text-sm font-normal text-slate-500 dark:text-slate-400">
-                    Supported formats: PDF, DOCX
-                  </p>
-                </div>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  className="hidden"
-                  onChange={onInputChange}
-                />
-
-                <button
-                  type="button"
-                  onClick={onBrowseClick}
-                  className="flex h-11 min-w-40 items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-lg shadow-primary/20"
+            {!file && (
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-[#1c2027]/60">
+                <div
+                  className="flex flex-col items-center gap-6 rounded-xl border-2 border-dashed border-slate-300 bg-white/50 px-6 py-12 transition-all hover:border-primary/50 dark:border-[#3b4554] dark:bg-[#1c2027]/30"
+                  onDrop={onDrop}
+                  onDragOver={onDragOver}
                 >
-                  Browse file
-                </button>
+                  <div className="rounded-full bg-primary/10 p-4">
+                    <span className="material-symbols-outlined text-4xl text-primary">
+                      cloud_upload
+                    </span>
+                  </div>
 
-                {/* Optional: file helper */}
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Max size: 10MB (example)
-                </p>
+                  <div className="flex max-w-130 flex-col items-center gap-2">
+                    <p className="text-center text-lg font-bold leading-tight">
+                      Drag &amp; drop or click to upload
+                    </p>
+                    <p className="text-center text-sm font-normal text-slate-500 dark:text-slate-400">
+                        Supported formats: PDF, DOCX, Images
+                    </p>
+                  </div>
 
-                {error && (
-                  <p className="mt-2 text-sm font-semibold text-red-600 dark:text-red-400">
-                    {error}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.docx,.png,.jpg,.jpeg,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*"
+                    className="hidden"
+                    onChange={onInputChange}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={onBrowseClick}
+                    className="flex h-11 min-w-40 items-center justify-center rounded-lg bg-primary px-4 text-sm font-bold text-white shadow-lg shadow-primary/20"
+                  >
+                    Browse file
+                  </button>
+
+                  {/* Optional: file helper */}
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Max size: 10MB (example)
                   </p>
-                )}
+
+                  {error && (
+                    <p className="mt-2 text-sm font-semibold text-red-600 dark:text-red-400">
+                      {error}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Preview Panel */}
             {file && (
@@ -177,13 +181,20 @@ export default function UploadNewDocument() {
                   </button>
                 </div>
                 <div className="mt-4">
-                  {previewUrl && (
+                  {previewUrl && (file?.type === "application/pdf" || file?.name?.toLowerCase().endsWith(".pdf")) && (
                     <iframe
                       title="PDF Preview"
                       src={previewUrl}
                       className="h-[70vh] w-full rounded-lg border border-slate-200 dark:border-slate-700"
                     />
                   )}
+
+                  {previewUrl && !(file?.type === "application/pdf" || file?.name?.toLowerCase().endsWith(".pdf")) && (
+                    <div className="flex max-h-[70vh] items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-2 dark:border-slate-700 dark:bg-slate-900/30">
+                      <img src={previewUrl} alt="Preview" className="max-h-[68vh] w-auto rounded" />
+                    </div>
+                  )}
+
                   {!previewUrl && (
                     <div className="max-h-[70vh] overflow-auto rounded-lg border border-slate-200 p-4 dark:border-slate-700">
                       {isConverting ? (
@@ -224,7 +235,7 @@ export default function UploadNewDocument() {
                   </div>
 
                   <div className="relative">
-                    <select value={docType} onChange={(e) => setDocType(e.target.value)} className="appearance-none flex h-14 w-full rounded-xl border border-slate-200 bg-white px-4 text-base font-normal outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#3b4554] dark:bg-[#1c2027]">
+                    <select required value={docType} onChange={(e) => setDocType(e.target.value)} className="appearance-none flex h-14 w-full rounded-xl border border-slate-200 bg-white px-4 text-base font-normal outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#3b4554] dark:bg-[#1c2027]">
                       <option value="contract">Contract or Agreement</option>
                       <option value="deed">Property Deed / Land Title</option>
                       <option value="notice">Legal Notice</option>
@@ -239,84 +250,52 @@ export default function UploadNewDocument() {
                   </div>
                 </div>
 
-                {/* Query */}
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-end justify-between">
-                    <label className="text-base font-medium leading-normal text-slate-700 dark:text-white">
-                      What do you want to understand?
-                    </label>
-                    <span className="text-[10px] font-semibold uppercase text-slate-500">
-                      පැහැදිලි කරගත යුතු කරුණු
-                    </span>
-                  </div>
+                {/* Buttons */}
+                <div className="pt-2">
+                  <div className="flex flex-col gap-3">
+                    <button
+                      type="button"
+                      disabled={!file || uploading}
+                      onClick={async () => {
+                        if (!file) return;
+                        setUploading(true);
+                        setError("");
+                        try {
+                          const form = new FormData();
+                          form.append("file", file);
+                          form.append("doc_type", docType);
+                          const res = await client.post("/api/documents/upload", form, {
+                            headers: { "Content-Type": "multipart/form-data" },
+                          });
+                          const newId = res?.data?.document?.id;
+                          if (newId) {
+                            navigate(`/document?id=${newId}`);
+                          } else {
+                            navigate("/document");
+                          }
+                        } catch (e) {
+                          setError(e?.message || "Upload failed.");
+                        } finally {
+                          setUploading(false);
+                        }
+                      }}
+                      className="flex h-14 w-full items-center justify-center rounded-xl bg-[#1c2027] text-base font-bold text-white shadow-xl shadow-primary/30 transition-transform active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {uploading ? "Uploading…" : "Upload & Analyze"}
+                    </button>
 
-                  <textarea
-                    className="min-h-32 w-full rounded-xl border border-slate-200 bg-white p-4 text-base font-normal outline-none transition-all placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-[#3b4554] dark:bg-[#1c2027] dark:placeholder:text-slate-500"
-                    placeholder="e.g. Is there any hidden cost or termination fee?"
-                    value={queryText}
-                    onChange={(e) => setQueryText(e.target.value)}
-                  />
+                    <button
+                      type="button"
+                      onClick={() => navigate(-1)}
+                      className="flex h-12 w-full items-center justify-center rounded-xl bg-[#1c2027] text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Desktop helper panel */}
-            <div className="hidden rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-[#1c2027]/60 dark:text-slate-300 lg:block">
-              <p className="font-semibold text-slate-900 dark:text-white">Tips</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5">
-                <li>Ask about termination clauses, fees, and liabilities.</li>
-                <li>Mention any dates or amounts you care about.</li>
-                <li>Upload the full document for best results.</li>
-              </ul>
-            </div>
           </section>
-        </div>
-
-        {/* Footer buttons */}
-        <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-800">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-end">
-            <button
-              type="button"
-              disabled={!file || uploading}
-              onClick={async () => {
-                if (!file) return;
-                setUploading(true);
-                setError("");
-                try {
-                  const form = new FormData();
-                  form.append("file", file);
-                  form.append("doc_type", docType);
-                  form.append("query_text", queryText);
-                  const res = await client.post("/api/documents/upload", form, {
-                    headers: { "Content-Type": "multipart/form-data" },
-                  });
-                  const newId = res?.data?.document?.id;
-                  if (newId) {
-                    navigate(`/document?id=${newId}`);
-                  } else {
-                    navigate("/document");
-                  }
-                } catch (e) {
-                  setError(e?.message || "Upload failed.");
-                } finally {
-                  setUploading(false);
-                }
-              }}
-              className="flex h-14 w-full items-center justify-center rounded-xl bg-[#1c2027] text-base font-bold text-white shadow-xl shadow-primary/30 transition-transform active:scale-95 lg:w-auto lg:px-10 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {uploading ? "Uploading…" : "Upload & Analyze"}
-            </button>
-
-            <button
-              type="button"
-              className="flex h-12 w-full items-center justify-center rounded-xl bg-[#1c2027] text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:w-auto lg:px-8"
-            >
-              Cancel
-            </button>
-          </div>
-
-          {/* iOS home indicator (mobile only) */}
-          <div className="mx-auto mt-6 mb-2 h-1.5 w-32 rounded-full bg-slate-300 dark:bg-slate-700 lg:hidden" />
         </div>
       </div>
     </div>
