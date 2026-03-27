@@ -126,4 +126,74 @@ async function me(req, res) {
 	}
 }
 
-module.exports = { signup, login, logout, me };
+function getAuthUserIdFromCookie(req) {
+	const token = req.cookies?.[TOKEN_COOKIE];
+	if (!token) return null;
+	try {
+		const payload = jwt.verify(token, JWT_SECRET);
+		return payload?.sub || null;
+	} catch {
+		return null;
+	}
+}
+
+async function updateProfile(req, res) {
+	try {
+		const userId = getAuthUserIdFromCookie(req);
+		if (!userId) return res.status(401).json({ message: "Not authenticated." });
+
+		const { name, email } = req.body || {};
+		if (!name || !email) {
+			return res.status(400).json({ message: "Name and email are required." });
+		}
+		if (typeof name !== "string" || name.trim().length < 2) {
+			return res.status(400).json({ message: "Name must be at least 2 characters." });
+		}
+		const normalizedEmail = String(email).trim().toLowerCase();
+		if (!normalizedEmail.includes("@")) {
+			return res.status(400).json({ message: "Invalid email." });
+		}
+
+		const existing = await query("SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1", [normalizedEmail, userId]);
+		if (existing && existing.length > 0) {
+			return res.status(409).json({ message: "An account with this email already exists." });
+		}
+
+		await query("UPDATE users SET name = ?, email = ? WHERE id = ?", [name.trim(), normalizedEmail, userId]);
+		return res.json({ message: "Profile updated successfully." });
+	} catch (err) {
+		console.error("Update profile error:", err.message);
+		return res.status(500).json({ message: "Internal server error." });
+	}
+}
+
+async function changePassword(req, res) {
+	try {
+		const userId = getAuthUserIdFromCookie(req);
+		if (!userId) return res.status(401).json({ message: "Not authenticated." });
+
+		const { currentPassword, newPassword } = req.body || {};
+		if (!currentPassword || !newPassword) {
+			return res.status(400).json({ message: "Current password and new password are required." });
+		}
+		if (typeof newPassword !== "string" || newPassword.length < 6) {
+			return res.status(400).json({ message: "New password must be at least 6 characters." });
+		}
+
+		const rows = await query("SELECT password_hash FROM users WHERE id = ? LIMIT 1", [userId]);
+		if (!rows || rows.length === 0) return res.status(401).json({ message: "User not found." });
+
+		const match = await bcrypt.compare(currentPassword, rows[0].password_hash);
+		if (!match) return res.status(401).json({ message: "Current password is incorrect." });
+
+		const salt = await bcrypt.genSalt(10);
+		const newHash = await bcrypt.hash(newPassword, salt);
+		await query("UPDATE users SET password_hash = ? WHERE id = ?", [newHash, userId]);
+		return res.json({ message: "Password updated successfully." });
+	} catch (err) {
+		console.error("Change password error:", err.message);
+		return res.status(500).json({ message: "Internal server error." });
+	}
+}
+
+module.exports = { signup, login, logout, me, updateProfile, changePassword };

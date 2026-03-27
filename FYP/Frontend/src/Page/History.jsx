@@ -14,20 +14,9 @@ export default function History() {
 	const [dateTo, setDateTo] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
-	const [user, setUser] = useState(null);
-	const [today, setToday] = useState("");
 	const [openDoc, setOpenDoc] = useState(null);
 
 	const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
-
-	const handleLogout = async () => {
-		try {
-			await client.post("/api/auth/logout");
-			navigate("/login", { replace: true });
-		} catch (err) {
-			console.error("Logout failed:", err?.message || err);
-		}
-	};
 
 	useEffect(() => {
 		let mounted = true;
@@ -43,22 +32,7 @@ export default function History() {
 				if (mounted) setLoading(false);
 			}
 		}
-		async function fetchUser() {
-			try {
-				const res = await client.get("/api/auth/me");
-				if (mounted) setUser(res.data.user);
-			} catch {
-				if (mounted) setUser(null);
-			}
-		}
-		function getToday() {
-			const d = new Date();
-			return d.toLocaleDateString("en-CA");
-		}
-
 		fetchAllDocs();
-		fetchUser();
-		setToday(getToday());
 		return () => {
 			mounted = false;
 		};
@@ -106,12 +80,7 @@ export default function History() {
 
 	return (
 		<div className="min-h-screen text-slate-900 dark:bg-background-dark dark:text-slate-100">
-			<TopAppBar
-				title={user ? `Welcome, ${user.name}` : "History"}
-				subtitle={today ? `Today's date: ${today}` : ""}
-				onNotificationsClick={() => {}}
-				onLogoutClick={handleLogout}
-			/>
+			<TopAppBar onNotificationsClick={() => {}} />
 
 			<div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 pb-24 pt-6 lg:grid-cols-[260px_1fr] lg:pb-10">
 				<aside className="hidden lg:sticky lg:top-22 lg:block lg:h-[calc(100vh-88px)]">
