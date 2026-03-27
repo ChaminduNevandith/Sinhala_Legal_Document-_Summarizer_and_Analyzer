@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import client from "../api/client";
 import TopAppBar from "../Components/TopAppBar";
+import Sidebar from "../Components/Sidebar.jsx";
 
 export default function DocumentDetails() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function DocumentDetails() {
 
   const [activeTab, setActiveTab] = useState("quick");
   const [summary, setSummary] = useState([]);
+  const [document, setDocument] = useState(null);
   const [analysis, setAnalysis] = useState({
     rights: [],
     obligations: [],
@@ -34,6 +36,7 @@ export default function DocumentDetails() {
       try {
         const res = await client.get(`/api/documents/${docId}`);
         const doc = res.data?.document;
+        setDocument(doc ?? null);
         
         // Process summary
         if (doc?.summary) {
@@ -56,6 +59,7 @@ export default function DocumentDetails() {
       } catch (e) {
         setError(e.message || "Failed to load document");
         setSummary(["No summary available."]);
+        setDocument(null);
       } finally {
         setLoading(false);
       }
@@ -63,33 +67,54 @@ export default function DocumentDetails() {
     if (docId) fetchDocument();
   }, [docId]);
 
+  const uploadedAtText = useMemo(() => {
+    const raw =
+      document?.createdAt ??
+      document?.uploadedAt ??
+      document?.date ??
+      document?.meta;
+
+    if (!raw) return "";
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
+    return String(raw);
+  }, [document]);
+
   return (
-    <div className="min-h-screen bg-[#1c2027] text-slate-900  dark:text-white font-display">
-      {/* Top App Bar */}
+    <div className="min-h-screen text-slate-900 dark:bg-background-dark dark:text-slate-100 font-display">
+
       <TopAppBar
-        title="ආයුබෝවන්, අමිල"
-        subtitle="අද දිනය: ඔක්තෝබර් 24"
-        onNotificationsClick={() => {}}
-        onLogoutClick={() => {}}
-        className="mx-auto w-full "
+        onNotificationsClick={() => {
+          console.log("Notifications clicked");
+        }}
       />
 
-      {/* Page layout */}
-      <div className="mx-auto w-full max-w-6xl px-4 pb-32">
-        <div className="grid grid-cols-1 gap-6 pt-6 lg:grid-cols-[1fr_320px]">
-          {/* Main */}
-          <main className="min-w-0">
-            {/* Header Section */}
-            <div className="pb-2">
-              <h3 className="text-left text-2xl font-bold leading-tight tracking-tight text-slate-900 dark:text-white">
-                නිවාස කුලී ගිවිසුම - මහරගම
-              </h3>
-              <p className="mt-1 text-sm font-normal leading-normal text-slate-500 dark:text-[#9da8b9]">
-                සාරාංශය සකස් කළේ: 2023 නොවැම්බර් 12
-              </p>
-            </div>
 
-            {/* Tabs */}
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 pb-24 pt-6 lg:grid-cols-[260px_1fr] lg:pb-10">
+        <aside className="hidden lg:sticky lg:top-22 lg:block lg:h-[calc(100vh-88px)]">
+          <Sidebar />
+        </aside>
+
+
+        <main className="min-w-0">
+
+          <div className="pb-2">
+            <h3 className="text-left text-2xl font-bold leading-tight tracking-tight text-slate-900 dark:text-white">
+              {document?.title || document?.name || "Document"}
+            </h3>
+            {uploadedAtText ? (
+              <p className="mt-1 text-sm font-normal leading-normal text-slate-500 dark:text-[#9da8b9]">
+                Uploaded: {uploadedAtText}
+              </p>
+            ) : null}
+          </div>
+
             <div className="sticky top-[73px] z-40 -mx-4 border-b border-slate-200 bg-[#1c2027] backdrop-blur-md dark:border-[#3b4554] dark:bg-[#2e343f] lg:static lg:top-auto lg:mx-0 lg:rounded-2xl lg:border lg:bg-[#2e343f] lg:px-3 lg:py-2 lg:shadow-sm lg:backdrop-blur-0 dark:lg:bg-card-dark dark:lg:border-slate-800">
               <div className="flex overflow-x-auto px-4 lg:overflow-visible lg:px-0">
                 {tabs.map((t) => {
@@ -113,8 +138,8 @@ export default function DocumentDetails() {
               </div>
             </div>
 
-            {/* Content */}
-            <div className="pt-6">
+          {/* Content */}
+          <div className="pt-6">
               {activeTab === "quick" && (
                 <section className="space-y-1">
                   {loading ? (
@@ -154,7 +179,7 @@ export default function DocumentDetails() {
                         verified_user
                       </span>
                       <span className="text-base font-bold text-success">
-                        ඔබගේ අයිතිවාසිකම් (Rights)
+                        Your Rights 
                       </span>
                     </div>
                     {loading ? (
@@ -177,7 +202,7 @@ export default function DocumentDetails() {
                         assignment_late
                       </span>
                       <span className="text-base font-bold text-warning">
-                        ඔබට කළ යුතු දේ (Obligations)
+                        Your Obligations 
                       </span>
                     </div>
                     {loading ? (
@@ -200,7 +225,7 @@ export default function DocumentDetails() {
                         event_busy
                       </span>
                       <span className="text-base font-bold text-danger">
-                        වැදගත් දිනයන් (Deadlines)
+                        Your Deadlines 
                       </span>
                     </div>
                     {loading ? (
@@ -229,7 +254,7 @@ export default function DocumentDetails() {
                       <p className="text-center text-slate-600 dark:text-slate-400">Loading risk analysis...</p>
                     ) : analysis.risks.length > 0 ? (
                       analysis.risks.map((risk, idx) => (
-                        <QA key={idx} q={`වැදගතක්: ${risk.substring(0, 60)}...`} a={risk} />
+                        <QA key={idx} q={`Important: ${risk.substring(0, 60)}...`} a={risk} />
                       ))
                     ) : (
                       <p className="text-center text-slate-600 dark:text-slate-400">No risks identified in the document.</p>
@@ -237,46 +262,32 @@ export default function DocumentDetails() {
                   </div>
                 </section>
               )}
+          </div>
+
+          {/* Document info (updated, no Quick actions) */}
+          <section className="mt-6 rounded-2xl border border-slate-200 bg-[#1c2027] p-4 shadow-sm dark:border-slate-800 dark:bg-[#2e343f]">
+            <p className="text-sm font-bold text-slate-900 dark:text-white">Document info</p>
+            <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+              <Row k="Title" v={document?.title || document?.name || "-"} />
+              <Row k="Uploaded" v={uploadedAtText || "-"} />
+              <Row k="Document ID" v={docId || "-"} />
+              <Row k="Status" v={loading ? "Loading..." : error ? "Error" : "Ready"} />
             </div>
-          </main>
-
-          {/* Desktop Sidebar */}
-          <aside className="hidden lg:block">
-            <div className="sticky top-[92px] space-y-4">
-              <div className="rounded-2xl border border-slate-200 bg-[#1c2027] p-4 shadow-sm  dark:border-slate-800 dark:bg-[#2e343f]">
-                <p className="text-sm font-bold text-slate-900 dark:text-white">Quick actions</p>
-
-                <div className="mt-3 grid grid-cols-2 gap-2 ">
-                  <SideAction icon="picture_as_pdf" label="PDF Download" />
-                  <SideAction icon="share" label="Share" />
-                  <SideAction icon="bookmark" label="Save" />
-                  <SideAction icon="report" label="Report" />
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-[#1c2027] p-4 shadow-sm dark:border-slate-800 dark:bg-[#2e343f]">
-                <p className="text-sm font-bold text-slate-900 dark:text-white">Document info</p>
-                <div className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
-                  <Row k="Type" v="Rental Agreement" />
-                  <Row k="Status" v="Ready" />
-                  <Row k="Created" v="2023-11-12" />
-                </div>
-              </div>
-            </div>
-          </aside>
-        </div>
+          </section>
+        </main>
       </div>
 
       {/* Floating Action Button (mobile + desktop) */}
       <div className="fixed bottom-8 right-6 z-[60]">
         <button
           type="button"
+          onClick={() => navigate("/upload")}
           className="group flex items-center justify-center gap-3 rounded-full bg-primary px-6 py-4 font-bold text-white shadow-lg shadow-primary/30 transition-all hover:bg-primary/90 active:scale-95"
         >
           <span className="material-symbols-outlined group-hover:animate-bounce">
             picture_as_pdf
           </span>
-          <span className="text-sm">සාරාංශය බාගත කරන්න (PDF)</span>
+          <span className="text-sm">Upload New Document</span>
         </button>
       </div>
 
@@ -292,18 +303,6 @@ function QA({ q, a }) {
       <p className="mb-2 text-sm font-bold text-primary">{q}</p>
       <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{a}</p>
     </div>
-  );
-}
-
-function SideAction({ icon, label }) {
-  return (
-    <button
-      type="button"
-      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-[#1c2027] px-3 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:bg-background-dark dark:text-slate-200 dark:hover:bg-slate-800"
-    >
-      <span className="material-symbols-outlined text-lg">{icon}</span>
-      {label}
-    </button>
   );
 }
 
