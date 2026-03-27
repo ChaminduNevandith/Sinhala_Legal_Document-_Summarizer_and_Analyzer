@@ -9,6 +9,8 @@ import pytesseract
 import traceback
 from typing import List, Dict
 import sys
+import warnings
+warnings.filterwarnings("ignore", message=".*tied weights.*")
 
 # Add Script directory to path for legal_analysis import
 sys.path.insert(0, os.path.dirname(__file__))
@@ -21,13 +23,16 @@ LANG = "sin"
 
 app = FastAPI()
 
-# ✅ Load model once at startup (resolve path relative to this file)
+#  Load model once at startup (resolve path relative to this file)
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # points to Backend/
-MODEL_PATH = os.path.join(BASE_DIR, "FYP_models", "Test_Model_3")
+MODEL_PATH = os.path.join(BASE_DIR, "FYP_models", "Test_Model_4")
 
 print("Loading model...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
-model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_PATH)
+model = AutoModelForSeq2SeqLM.from_pretrained(
+    MODEL_PATH,
+    tie_word_embeddings=False
+)
 
 # Fix generation config using the supported generation_config API.
 # Use a larger max_length so summaries don't get cut off early.
@@ -57,6 +62,20 @@ class SummarizeResponse(BaseModel):
     summary: str
     input_tokens: int
     chunks_processed: int
+
+class PageWiseSummarizeRequest(BaseModel):
+    pages: List[str]  # List of page texts
+    max_new_tokens: int = 512
+    num_beams: int = 4
+    do_sample: bool = True
+    temperature: float = 0.7
+    top_p: float = 0.9
+
+class PageWiseSummarizeResponse(BaseModel):
+    summary: str
+    page_summaries: List[str]  # Summary of each page
+    total_pages: int
+    total_input_tokens: int
 
 class LegalAnalysisRequest(BaseModel):
     text: str
@@ -178,6 +197,66 @@ def map_reduce_summarize(
 
     return final_summary, len(tokens), len(chunks)
 
+def map_reduce_page_wise_summarize(
+    pages: List[str],
+    max_new_tokens: int,
+    num_beams: int,
+    do_sample: bool,
+    temperature: float,
+    top_p: float,
+):
+    """
+    Summarize document page-by-page then combine results
+    
+    MAP STEP: Summarize each page individually
+    REDUCE STEP: Combine page summaries into final summary
+    """
+    print(f"Processing {len(pages)} pages...")
+    
+    total_tokens = 0
+    page_summaries = []
+    
+    # 🔹 MAP STEP (summarize each page)
+    for idx, page_text in enumerate(pages):
+        if not page_text.strip():
+            print(f"  Skipping empty page {idx + 1}")
+            page_summaries.append("")
+            continue
+            
+        print(f"  Summarizing page {idx + 1}/{len(pages)}...")
+        
+        page_tokens = len(tokenizer.encode(page_text))
+        total_tokens += page_tokens
+        
+        # Summarize page with reduced output size
+        page_summary = generate_summary(
+            page_text,
+            int(max_new_tokens * 0.6),  # Reduce size for individual pages
+            num_beams,
+            do_sample,
+            temperature,
+            top_p,
+        )
+        page_summaries.append(page_summary)
+    
+    # 🔹 REDUCE STEP (combine page summaries into final summary)
+    print("Combining page summaries...")
+    combined = " ".join([s for s in page_summaries if s.strip()])
+    
+    if not combined.strip():
+        return "", page_summaries, total_tokens
+    
+    final_summary = generate_summary(
+        combined,
+        max_new_tokens,
+        num_beams,
+        do_sample,
+        temperature,
+        top_p,
+    )
+    
+    return final_summary, page_summaries, total_tokens
+
 @app.post("/summarize", response_model=SummarizeResponse)
 async def summarize(request: SummarizeRequest):
     try:
@@ -226,6 +305,48 @@ async def summarize(request: SummarizeRequest):
 
     except Exception as e:
         print("[FASTAPI_SUMMARIZE_ERROR]", repr(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/summarize-page-wise", response_model=PageWiseSummarizeResponse)
+async def summarize_page_wise(request: PageWiseSummarizeRequest):
+    """
+    Summarize document page-by-page and combine results
+    
+    MAP STEP: Each page summarized individually
+    REDUCE STEP: Page summaries combined into final summary
+    """
+    try:
+        if not request.pages or all(not p.strip() for p in request.pages):
+            raise HTTPException(status_code=400, detail="Pages cannot be empty")
+
+        # Validation
+        temperature = float(request.temperature)
+        top_p = float(request.top_p)
+        if temperature <= 0:
+            raise HTTPException(status_code=400, detail="temperature must be > 0")
+        if not (0 < top_p <= 1):
+            raise HTTPException(status_code=400, detail="top_p must be in (0, 1]")
+
+        # Run page-wise summarization
+        final_summary, page_summaries, total_tokens = map_reduce_page_wise_summarize(
+            request.pages,
+            request.max_new_tokens,
+            request.num_beams,
+            request.do_sample,
+            temperature,
+            top_p,
+        )
+
+        return PageWiseSummarizeResponse(
+            summary=final_summary,
+            page_summaries=page_summaries,
+            total_pages=len(request.pages),
+            total_input_tokens=total_tokens
+        )
+
+    except Exception as e:
+        print("[FASTAPI_PAGE_WISE_SUMMARIZE_ERROR]", repr(e))
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
