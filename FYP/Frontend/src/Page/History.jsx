@@ -9,6 +9,9 @@ import TopAppBar from "../Components/TopAppBar.jsx";
 export default function History() {
 	const navigate = useNavigate();
 	const [docs, setDocs] = useState([]);
+	const [searchTerm, setSearchTerm] = useState("");
+	const [dateFrom, setDateFrom] = useState("");
+	const [dateTo, setDateTo] = useState("");
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [user, setUser] = useState(null);
@@ -61,6 +64,46 @@ export default function History() {
 		};
 	}, []);
 
+	const renderAnalysisList = (items, emptyText) => {
+		if (!Array.isArray(items) || items.length === 0) {
+			return <div className="text-sm text-slate-500 dark:text-slate-400">{emptyText}</div>;
+		}
+		return (
+			<ul className="space-y-2">
+				{items.map((item, idx) => (
+					<li
+						key={idx}
+						className="rounded-lg border border-blue-800 bg-[#1c2027] px-3 py-2 text-sm text-slate-700 dark:border-slate-800 dark:bg-background-dark dark:text-slate-200"
+					>
+						{typeof item === "string" ? item : JSON.stringify(item)}
+					</li>
+				))}
+			</ul>
+		);
+	};
+
+	const getDocDate = (doc) => {
+		// Prefer a real timestamp if available (createdAt), else fallback to meta.
+		const createdAt = doc?.createdAt;
+		if (createdAt) {
+			const d = new Date(createdAt);
+			if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10); // YYYY-MM-DD
+		}
+		// meta format from backend: "YYYY-MM-DD • X.Y MB"
+		const raw = String(doc?.meta ?? "");
+		const datePart = raw.split("•")[0]?.trim();
+		return datePart || "";
+	};
+
+	const filteredDocs = docs.filter((doc) => {
+		const title = String(doc?.title ?? "");
+		const matchesTitle = title.toLowerCase().includes(searchTerm.trim().toLowerCase());
+		const docDate = getDocDate(doc); // YYYY-MM-DD
+		const matchesFrom = dateFrom ? docDate >= dateFrom : true;
+		const matchesTo = dateTo ? docDate <= dateTo : true;
+		return matchesTitle && matchesFrom && matchesTo;
+	});
+
 	return (
 		<div className="min-h-screen text-slate-900 dark:bg-background-dark dark:text-slate-100">
 			<TopAppBar
@@ -90,15 +133,38 @@ export default function History() {
 						</button>
 					</div>
 
+					<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+						<input
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							placeholder="Find summary by document name..."
+							className="h-12 w-full rounded-xl border border-blue-800 bg-[#1c2027] px-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-slate-800 dark:bg-background-dark dark:text-slate-100"
+						/>
+						<input
+							type="date"
+							value={dateFrom}
+							onChange={(e) => setDateFrom(e.target.value)}
+							placeholder="From"
+							className="h-12 w-full rounded-xl border border-blue-800 bg-[#1c2027] px-4 text-sm font-medium text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-slate-800 dark:bg-background-dark"
+						/>
+						<input
+							type="date"
+							value={dateTo}
+							onChange={(e) => setDateTo(e.target.value)}
+							placeholder="To"
+							className="h-12 w-full rounded-xl border border-blue-800 bg-[#1c2027] px-4 text-sm font-medium text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-slate-800 dark:bg-background-dark"
+						/>
+					</div>
+
 					<div className="space-y-3">
 						{loading ? (
 							<div className="text-center text-slate-500 dark:text-slate-400">Loading...</div>
 						) : error ? (
 							<div className="text-center text-red-500">{error}</div>
-						) : docs.length === 0 ? (
+						) : filteredDocs.length === 0 ? (
 							<div className="text-center text-slate-500 dark:text-slate-400">No documents found.</div>
 						) : (
-							docs.map((doc) => (
+							filteredDocs.map((doc) => (
 								<DocCard key={doc.id} doc={doc} onViewSummary={() => setOpenDoc(doc)} />
 							))
 						)}
@@ -135,6 +201,26 @@ export default function History() {
 									<h2 className="text-xl font-bold mb-2 text-slate-900 dark:text-white">Summary</h2>
 									<div className="mb-4 text-slate-700 dark:text-slate-200 whitespace-pre-line">
 										{openDoc.summary || "No summary available."}
+									</div>
+
+									<h3 className="text-lg font-semibold mt-4 mb-2 text-slate-900 dark:text-white">Legal Analysis</h3>
+									<div className="space-y-4">
+										<div>
+											<div className="mb-1 text-sm font-bold text-slate-900 dark:text-white">Rights</div>
+											{renderAnalysisList(openDoc?.analysis?.rights, "No rights identified.")}
+										</div>
+										<div>
+											<div className="mb-1 text-sm font-bold text-slate-900 dark:text-white">Obligations</div>
+											{renderAnalysisList(openDoc?.analysis?.obligations, "No obligations identified.")}
+										</div>
+										<div>
+											<div className="mb-1 text-sm font-bold text-slate-900 dark:text-white">Deadlines</div>
+											{renderAnalysisList(openDoc?.analysis?.deadlines, "No deadlines identified.")}
+										</div>
+										<div>
+											<div className="mb-1 text-sm font-bold text-slate-900 dark:text-white">Risks</div>
+											{renderAnalysisList(openDoc?.analysis?.risks, "No risks identified.")}
+										</div>
 									</div>
 
 									<h3 className="text-lg font-semibold mt-4 mb-1 text-slate-900 dark:text-white">Details</h3>

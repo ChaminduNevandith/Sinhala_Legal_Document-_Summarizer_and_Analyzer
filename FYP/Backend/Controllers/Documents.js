@@ -88,6 +88,7 @@ async function getRecentDocuments(req, res) {
 			id: doc.id,
 			title: doc.name,
 			mimeType: doc.mime_type,
+			createdAt: doc.created_at ? doc.created_at.toISOString() : null,
 			meta: `${doc.created_at.toISOString().slice(0, 10)} • ${(doc.size / (1024 * 1024)).toFixed(1)} MB`,
 			status: "ready", // You can adjust this if you have a processing state
 			icon: "description", // Or choose based on mime_type
@@ -125,6 +126,7 @@ async function getAllDocuments(req, res) {
 			id: doc.id,
 			title: doc.name,
 			mimeType: doc.mime_type,
+			createdAt: doc.created_at ? doc.created_at.toISOString() : null,
 			meta: `${doc.created_at.toISOString().slice(0, 10)} • ${(doc.size / (1024 * 1024)).toFixed(1)} MB`,
 			status: "ready",
 			icon: "description",
@@ -163,6 +165,7 @@ async function getDocumentById(req, res) {
 		return res.json({ 
 			document: {
 				...doc,
+				createdAt: doc.created_at ? doc.created_at.toISOString() : null,
 				analysis: {
 					rights: doc.rights ? JSON.parse(doc.rights) : [],
 					obligations: doc.obligations ? JSON.parse(doc.obligations) : [],
