@@ -9,9 +9,9 @@ from typing import Dict, List
 import json
 from difflib import SequenceMatcher
 
-# ============================================================================
-# CLEAN KEYWORDS (REDUCED NOISE)
-# ============================================================================
+
+# CLEAN KEYWORDS
+
 
 RIGHTS_KEYWORDS_SI = [
     "අයිතිය ඇත",
@@ -46,9 +46,9 @@ RISK_KEYWORDS_SI = [
     "ප්‍රතිවිපාක",
 ]
 
-# ============================================================================
-# FUZZY MATCHING (SINHALA OCR FIX)
-# ============================================================================
+
+# FUZZY MATCHING 
+
 
 def is_similar(a, b, threshold=0.8):
     return SequenceMatcher(None, a, b).ratio() > threshold
@@ -65,9 +65,9 @@ def keyword_match(sentence, keyword):
     return False
 
 
-# ============================================================================
+
 # TEXT PREPROCESSING
-# ============================================================================
+
 
 def preprocess_text(text: str) -> str:
     text = re.sub(r'\s+', ' ', text.strip())
@@ -79,9 +79,8 @@ def split_into_sentences(text: str) -> List[str]:
     return [s.strip() for s in sentences if len(s.strip()) > 10]
 
 
-# ============================================================================
+
 # SECTION DETECTION
-# ============================================================================
 
 def detect_section(sentence):
     if "අයිතිවාසිකම්" in sentence:
@@ -93,9 +92,9 @@ def detect_section(sentence):
     return None
 
 
-# ============================================================================
+
 # PRIORITY CLASSIFIER
-# ============================================================================
+
 
 def classify_sentence(sentence):
     s = sentence.lower()
@@ -116,9 +115,8 @@ def classify_sentence(sentence):
     return None
 
 
-# ============================================================================
-# RULE-BASED EXTRACTION (IMPROVED)
-# ============================================================================
+# RULE-BASED EXTRACTION 
+
 
 def rule_based_extraction(text: str) -> Dict[str, List]:
     preprocessed = preprocess_text(text)
@@ -148,9 +146,9 @@ def rule_based_extraction(text: str) -> Dict[str, List]:
     return results
 
 
-# ============================================================================
-# LLM REFINEMENT (OPTIONAL)
-# ============================================================================
+
+# LLM REFINEMENT
+
 
 def generate_refined_extraction(
     text: str,
@@ -217,9 +215,9 @@ Document:
         }
 
 
-# ============================================================================
+
 # MAIN ANALYZER
-# ============================================================================
+
 
 def normalize_text(text):
     return re.sub(r'\s+', ' ', text.strip().lower())
@@ -280,10 +278,6 @@ def analyze_legal_document(
         "summary": summary
     }
 
-
-# ============================================================================
-# FRONTEND FORMATTERS
-# ============================================================================
 
 def format_for_highlights(analysis_result: Dict) -> Dict:
     return {
