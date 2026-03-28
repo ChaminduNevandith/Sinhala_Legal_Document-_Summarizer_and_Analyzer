@@ -173,7 +173,7 @@ export default function DocumentDetails() {
                   </h4>
 
                   {/* Rights */}
-                  <div className="rounded-lg border-l-4 border-success bg-success/10 p-4">
+                  <div className="rounded-lg border-l-4 border-success bg-[#1c2027] p-4">
                     <div className="mb-2 flex items-center gap-2">
                       <span className="material-symbols-outlined text-success">
                         verified_user
@@ -196,7 +196,7 @@ export default function DocumentDetails() {
                   </div>
 
                   {/* Obligations */}
-                  <div className="rounded-lg border-l-4 border-warning bg-warning/10 p-4">
+                  <div className="rounded-lg border-l-4 border-warning bg-[#1c2027] p-4">
                     <div className="mb-2 flex items-center gap-2">
                       <span className="material-symbols-outlined text-warning">
                         assignment_late
@@ -219,7 +219,7 @@ export default function DocumentDetails() {
                   </div>
 
                   {/* Deadlines */}
-                  <div className="rounded-lg border-l-4 border-danger bg-danger/10 p-4">
+                  <div className="rounded-lg border-l-4 border-danger bg-[#1c2027] p-4">
                     <div className="mb-2 flex items-center gap-2">
                       <span className="material-symbols-outlined text-danger">
                         event_busy
@@ -245,8 +245,8 @@ export default function DocumentDetails() {
 
               {activeTab === "explanation" && (
                 <section className="space-y-6">
-                  <h4 className="mb-2 text-lg font-bold text-slate-900 dark:text-white">
-                    Risk and actionable insights explained in simple language
+                  <h4 className="mb-2 text-lg font-bold text-slate-900 dark:text-white ">
+                    Risks
                   </h4>
 
                   <div className="space-y-5">
@@ -299,7 +299,7 @@ export default function DocumentDetails() {
 
 function QA({ q, a }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-card-dark">
+    <div className="rounded-xl border border-slate-200 bg-[#1c2027] p-4 dark:border-slate-800 dark:bg-card-dark">
       <p className="mb-2 text-sm font-bold text-primary">{q}</p>
       <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{a}</p>
     </div>
