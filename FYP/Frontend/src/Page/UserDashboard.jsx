@@ -17,6 +17,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalDocs, setTotalDocs] = useState(0);
+  const [riskAssessments, setRiskAssessments] = useState(0);
   const [loadingTotal, setLoadingTotal] = useState(true);
   const [openDoc, setOpenDoc] = useState(null); // For modal
 
@@ -38,8 +39,10 @@ export default function Dashboard() {
       try {
         const res = await client.get("/api/getdocuments/total");
         setTotalDocs(res.data.total || 0);
+        setRiskAssessments(res.data.riskAssessments || 0);
       } catch {
         setTotalDocs(0);
+        setRiskAssessments(0);
       } finally {
         setLoadingTotal(false);
       }
@@ -104,7 +107,7 @@ export default function Dashboard() {
             />
             <StatCard
               title="Risk Assessments"
-              value="05"
+              value={loadingTotal ? "..." : riskAssessments}
               icon="warning"
               valueClassName="text-red-500"
               iconClassName="text-red-500"

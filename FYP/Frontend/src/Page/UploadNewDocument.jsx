@@ -8,17 +8,27 @@ export default function UploadNewDocument() {
   const navigate = useNavigate();
 
   const fileInputRef = useRef(null);
+  const uploadInFlightRef = useRef(false);
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState(""); // for PDFs
   const [docxHtml, setDocxHtml] = useState(""); // for DOCX
   const [docType, setDocType] = useState("contract");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState("idle"); // idle | uploading | processing
   const [isConverting, setIsConverting] = useState(false);
 
   const resetPreview = useCallback(() => {
     setPreviewUrl("");
     setDocxHtml("");
+  }, []);
+
+  const resetUploadState = useCallback(() => {
+    setUploading(false);
+    setUploadProgress(0);
+    setUploadStage("idle");
+    uploadInFlightRef.current = false;
   }, []);
 
   const isSupportedType = (f) => {
@@ -37,6 +47,8 @@ export default function UploadNewDocument() {
     if (!f) return;
     setError("");
     resetPreview();
+    setUploadProgress(0);
+    setUploadStage("idle");
 
     if (!isSupportedType(f)) {
       setError("Only PDF, DOCX, or image files are allowed.");
@@ -94,6 +106,7 @@ export default function UploadNewDocument() {
     setFile(null);
     setError("");
     resetPreview();
+    resetUploadState();
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -258,7 +271,13 @@ export default function UploadNewDocument() {
                       disabled={!file || uploading}
                       onClick={async () => {
                         if (!file) return;
+                        // Hard guard against rapid double-clicks before React state updates
+                        if (uploadInFlightRef.current) return;
+                        uploadInFlightRef.current = true;
+
                         setUploading(true);
+                        setUploadProgress(0);
+                        setUploadStage("uploading");
                         setError("");
                         try {
                           const form = new FormData();
@@ -266,7 +285,18 @@ export default function UploadNewDocument() {
                           form.append("doc_type", docType);
                           const res = await client.post("/api/documents/upload", form, {
                             headers: { "Content-Type": "multipart/form-data" },
+                            onUploadProgress: (evt) => {
+                              const total = evt?.total;
+                              const loaded = evt?.loaded ?? 0;
+                              if (!total) return;
+                              const pct = Math.max(0, Math.min(100, Math.round((loaded / total) * 100)));
+                              setUploadProgress(pct);
+                              if (pct >= 100) setUploadStage("processing");
+                            },
                           });
+
+                          // Server-side work may still be happening; keep UI in a "processing" state
+                          setUploadStage("processing");
                           const newId = res?.data?.document?.id;
                           if (newId) {
                             navigate(`/document?id=${newId}`);
@@ -275,14 +305,41 @@ export default function UploadNewDocument() {
                           }
                         } catch (e) {
                           setError(e?.message || "Upload failed.");
-                        } finally {
-                          setUploading(false);
+                          resetUploadState();
+                          return;
                         }
                       }}
                       className="flex h-14 w-full items-center justify-center rounded-xl bg-[#1c2027] text-base font-bold text-white shadow-xl shadow-primary/30 transition-transform active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {uploading ? "Uploading…" : "Upload & Analyze"}
+                      {uploading
+                        ? uploadStage === "processing"
+                          ? "Processing…"
+                          : uploadProgress > 0
+                            ? `Uploading… ${uploadProgress}%`
+                            : "Uploading…"
+                        : "Upload & Analyze"}
                     </button>
+
+                    {(uploading || uploadProgress > 0) && (
+                      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-[#1c2027]/60">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                            {uploadStage === "processing" ? "Document is processing…" : "Uploading document…"}
+                          </p>
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            {uploadStage === "processing" ? "" : `${uploadProgress}%`}
+                          </p>
+                        </div>
+                        {uploadStage !== "processing" && (
+                          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                            <div
+                              className="h-full rounded-full bg-primary transition-[width]"
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <button
                       type="button"

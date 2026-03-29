@@ -61,7 +61,36 @@ async function getTotalDocuments(req, res) {
 			`SELECT COUNT(*) AS total FROM documents WHERE user_id = ?`,
 			[userId]
 		);
-		return res.json({ total: rows[0]?.total || 0 });
+
+		// Risk assessments: count documents that have at least one identified risk.
+		// Stored as JSON text; we compute in JS to be robust against MySQL JSON support differences.
+		const riskRows = await query(
+			`SELECT risks FROM documents WHERE user_id = ?`,
+			[userId]
+		);
+
+		let riskAssessments = 0;
+		for (const row of riskRows || []) {
+			const raw = row?.risks;
+			if (!raw) continue;
+			if (typeof raw === "string") {
+				const trimmed = raw.trim();
+				if (!trimmed || trimmed === "[]" || trimmed === "null") continue;
+				try {
+					const parsed = JSON.parse(trimmed);
+					if (Array.isArray(parsed) && parsed.length > 0) riskAssessments += 1;
+					else if (!Array.isArray(parsed) && parsed) riskAssessments += 1;
+				} catch {
+					// If it's not valid JSON but not empty, treat as filled.
+					riskAssessments += 1;
+				}
+			} else {
+				// Non-string (unlikely from MySQL) - treat truthy values as filled.
+				riskAssessments += 1;
+			}
+		}
+
+		return res.json({ total: rows[0]?.total || 0, riskAssessments });
 	} catch (err) {
 		console.error("Get total documents error:", err.message);
 		return res.status(500).json({ message: "Internal server error." });

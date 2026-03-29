@@ -9,6 +9,23 @@ const TOKEN_COOKIE = process.env.COOKIE_NAME || "token";
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 const ENC_KEY_B64 = process.env.DOC_ENCRYPTION_KEY || ""; // 32-byte key in base64
 
+function normalizeUploadedFilename(name) {
+	const input = String(name || "");
+	if (!input) return input;
+
+	// Fix common multipart filename encoding issue:
+	// UTF-8 bytes interpreted as latin1 => shows as "à¶..." / "Ã..." etc.
+	// Only apply when we can prove the string is a latin1 view of utf8 bytes.
+	try {
+		const decoded = Buffer.from(input, "latin1").toString("utf8");
+		const roundTrip = Buffer.from(decoded, "utf8").toString("latin1");
+		if (roundTrip === input) return decoded;
+	} catch {
+		// ignore
+	}
+	return input;
+}
+
 function getEncryptionKey() {
 	if (!ENC_KEY_B64) throw new Error("DOC_ENCRYPTION_KEY not configured.");
 	const key = Buffer.from(ENC_KEY_B64, "base64");
@@ -92,9 +109,11 @@ async function uploadDocument(req, res) {
 		const file = req.file;
 		if (!file) return res.status(400).json({ message: "No file uploaded." });
 
+		const originalName = normalizeUploadedFilename(file.originalname);
+
 		// Validate type (safety net, also in multer)
-		const isPdf = file.mimetype === "application/pdf" || file.originalname.toLowerCase().endsWith(".pdf");
-		const isDocx = file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || file.originalname.toLowerCase().endsWith(".docx");
+		const isPdf = file.mimetype === "application/pdf" || originalName.toLowerCase().endsWith(".pdf");
+		const isDocx = file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || originalName.toLowerCase().endsWith(".docx");
 		if (!isPdf && !isDocx) return res.status(400).json({ message: "Only PDF and DOCX files are allowed." });
 
 		const { doc_type, query_text } = req.body || {};
@@ -111,7 +130,7 @@ async function uploadDocument(req, res) {
 						 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
 		const params = [
 			userId,
-			file.originalname,
+			originalName,
 			file.mimetype,
 			file.size,
 			iv,
@@ -185,7 +204,7 @@ async function uploadDocument(req, res) {
 			message: "Document uploaded securely.",
 			document: {
 				id: result.insertId,
-				name: file.originalname,
+				name: originalName,
 				mime_type: file.mimetype,
 				size: file.size,
 				created_at: new Date().toISOString(),
