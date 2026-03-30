@@ -3,7 +3,7 @@ import React from "react";
 export default function FeatureCard({ icon, title, description, previewIcon }) {
   return (
     <div className="rounded-xl bg-white dark:bg-[#1c2027] p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex gap-4 lg:flex-col lg:gap-3 transition-all duration-200 hover:shadow-xl hover:-translate-y-1 hover:border-blue-400 dark:hover:border-blue-500">
-      {/* Left/Text */}
+      {/* Left Preview */}
       <div className="flex flex-col gap-1 flex-[2_2_0px] lg:flex-none">
         <div className="flex items-center gap-2 mb-1">
           <span className="material-symbols-outlined text-primary">{icon}</span>
@@ -16,7 +16,7 @@ export default function FeatureCard({ icon, title, description, previewIcon }) {
         </p>
       </div>
 
-      {/* Right/Preview */}
+      {/* Right Preview */}
       <div
         className="w-full bg-center bg-no-repeat aspect-video bg-cover rounded-lg flex-1 bg-slate-100 dark:bg-slate-800 flex items-center justify-center"
         style={{

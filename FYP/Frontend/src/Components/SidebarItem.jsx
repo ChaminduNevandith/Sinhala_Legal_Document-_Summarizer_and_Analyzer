@@ -1,5 +1,5 @@
 
-
+// SidebarItem.jsx
 function SidebarItem({ icon, label, active, onClick }) {
   return (
     <button

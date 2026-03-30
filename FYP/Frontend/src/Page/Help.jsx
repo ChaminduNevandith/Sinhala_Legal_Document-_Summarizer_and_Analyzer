@@ -22,7 +22,6 @@ export default function Help() {
 							How to upload, view summaries, and read legal analysis.
 						</p>
 					</div>
-
 					<div className="space-y-4">
 						<details className="rounded-2xl border border-slate-200 bg-[#1c2027] p-5 shadow-sm dark:border-slate-800 dark:bg-surface-dark">
 							<summary className="flex cursor-pointer list-none items-center justify-between text-base font-bold text-slate-900 dark:text-white">
