@@ -14,7 +14,7 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Routes
+// Auth routes
 const authRoutes = require("./Routes/Authroutes");
 app.use("/api/auth", authRoutes);
 
@@ -22,15 +22,15 @@ app.use("/api/auth", authRoutes);
 const uploadDocumentRoutes = require("./Routes/UploadNewDocumentroutes");
 app.use("/api/documents", uploadDocumentRoutes);
 
-// Document query routes (recent, etc)
+// Document retrieval routes
 const documentsRoutes = require("./Routes/Documentsroutes");
 app.use("/api/getdocuments", documentsRoutes);
 
-// Initialize DB 
+// Initialize database connection
 initDatabase()
   .then(() => console.log("DB connection initialized"))
   .catch((e) => console.error("DB init failed:", e.message));
 
-// Start server
+// Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

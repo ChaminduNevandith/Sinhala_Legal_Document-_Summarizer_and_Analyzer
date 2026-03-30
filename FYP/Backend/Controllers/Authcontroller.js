@@ -6,6 +6,7 @@ const TOKEN_COOKIE = process.env.COOKIE_NAME || "token";
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d"; // e.g., '1d', '7d'
 
+// User registration
 async function signup(req, res) {
 	try {
 		const { name, email, password } = req.body || {};
@@ -45,6 +46,8 @@ async function signup(req, res) {
 }
 
 module.exports = { signup };
+
+// User login
 async function login(req, res) {
 	try {
 		const { email, password } = req.body || {};
@@ -83,6 +86,7 @@ async function login(req, res) {
 	}
 }
 
+// User logout
 async function logout(req, res) {
 	try {
 		const isProd = process.env.NODE_ENV === "production";
@@ -97,7 +101,7 @@ async function logout(req, res) {
 	}
 }
 
-// Return currently authenticated user based on JWT cookie
+// Get current authenticated user
 async function me(req, res) {
 	try {
 		const tokenName = TOKEN_COOKIE;
@@ -126,6 +130,7 @@ async function me(req, res) {
 	}
 }
 
+// Helper to get authenticated user ID from cookie
 function getAuthUserIdFromCookie(req) {
 	const token = req.cookies?.[TOKEN_COOKIE];
 	if (!token) return null;
@@ -137,6 +142,7 @@ function getAuthUserIdFromCookie(req) {
 	}
 }
 
+// Update user profile Details - name and email
 async function updateProfile(req, res) {
 	try {
 		const userId = getAuthUserIdFromCookie(req);
@@ -167,6 +173,7 @@ async function updateProfile(req, res) {
 	}
 }
 
+// Change user password
 async function changePassword(req, res) {
 	try {
 		const userId = getAuthUserIdFromCookie(req);

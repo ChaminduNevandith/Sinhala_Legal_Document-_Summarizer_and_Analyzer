@@ -5,17 +5,16 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
+// Constants
 const TOKEN_COOKIE = process.env.COOKIE_NAME || "token";
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 const ENC_KEY_B64 = process.env.DOC_ENCRYPTION_KEY || ""; // 32-byte key in base64
 
+// Helper to normalize uploaded filenames handle encoding issues
 function normalizeUploadedFilename(name) {
 	const input = String(name || "");
 	if (!input) return input;
 
-	// Fix common multipart filename encoding issue:
-	// UTF-8 bytes interpreted as latin1 => shows as "à¶..." / "Ã..." etc.
-	// Only apply when we can prove the string is a latin1 view of utf8 bytes.
 	try {
 		const decoded = Buffer.from(input, "latin1").toString("utf8");
 		const roundTrip = Buffer.from(decoded, "utf8").toString("latin1");
@@ -26,6 +25,7 @@ function normalizeUploadedFilename(name) {
 	return input;
 }
 
+// Helper to get encryption key buffer
 function getEncryptionKey() {
 	if (!ENC_KEY_B64) throw new Error("DOC_ENCRYPTION_KEY not configured.");
 	const key = Buffer.from(ENC_KEY_B64, "base64");
@@ -33,6 +33,7 @@ function getEncryptionKey() {
 	return key;
 }
 
+// Ensure documents table exists with necessary columns
 async function ensureDocumentsTable() {
 	await query(
 		`CREATE TABLE IF NOT EXISTS documents (
@@ -68,7 +69,7 @@ async function ensureDocumentsTable() {
 		}
 	}
 
-	// Ensure legal analysis columns
+	// Ensure legal analysis columns (if not exist)
 	const analysisColumns = ["rights", "obligations", "deadlines", "risks"];
 	for (const col of analysisColumns) {
 		try {
@@ -82,6 +83,7 @@ async function ensureDocumentsTable() {
 	}
 }
 
+// Get authenticated user details from JWT token in cookie
 function requireAuth(req, res, next) {
 	try {
 		const token = req.cookies?.[TOKEN_COOKIE];
@@ -99,6 +101,7 @@ function requireAuth(req, res, next) {
 	}
 }
 
+// uploadDocument: Handle file upload, encrypt and store in DB, then summarize and analyze
 async function uploadDocument(req, res) {
 	try {
 		await ensureDocumentsTable();
@@ -111,7 +114,6 @@ async function uploadDocument(req, res) {
 
 		const originalName = normalizeUploadedFilename(file.originalname);
 
-		// Validate type (safety net, also in multer)
 		const isPdf = file.mimetype === "application/pdf" || originalName.toLowerCase().endsWith(".pdf");
 		const isDocx = file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || originalName.toLowerCase().endsWith(".docx");
 		if (!isPdf && !isDocx) return res.status(400).json({ message: "Only PDF and DOCX files are allowed." });
@@ -140,9 +142,6 @@ async function uploadDocument(req, res) {
 			query_text || null,
 		];
 		const result = await query(sql, params);
-
-		// --- Summarization logic ---
-		// Save decrypted file temporarily with safe filename (no special chars)
 		const tempDir = path.join(__dirname, "../FYP_models/tmp");
 		if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 		const fileExtension = isPdf ? ".pdf" : ".docx";
@@ -163,7 +162,6 @@ async function uploadDocument(req, res) {
 		}
 		fs.unlinkSync(tempFilePath);
 
-		// Persist the summary in the documents table if we have one
 		if (summary) {
 			try {
 				await query("UPDATE documents SET summary = ? WHERE id = ?", [summary, result.insertId]);
@@ -172,23 +170,20 @@ async function uploadDocument(req, res) {
 			}
 		}
 
-		// --- Legal analysis logic (use full extracted text for analysis) ---
 		let analysisResult = null;
 		try {
-			// Use FULL extracted text for analysis to find ALL keyword instances
-			// But only IDENTIFIED SECTIONS are saved to the database
 			const textForAnalysis = extractedText || summary || "";
 			analysisResult = await analyzeLegalDocument(textForAnalysis);
 			if (analysisResult) {
 				const { rights, obligations, deadlines, risks } = analysisResult;
-				// ✅ SAVE ONLY: Identified sections for each category (NOT full extracted text)
+
 				await query(
 					"UPDATE documents SET rights = ?, obligations = ?, deadlines = ?, risks = ? WHERE id = ?",
 					[
-						JSON.stringify(rights || []),      // Only identified right sections
-						JSON.stringify(obligations || []), // Only identified obligation sections
-						JSON.stringify(deadlines || []),   // Only identified deadline sections
-						JSON.stringify(risks || []),       // Only identified risk sections
+						JSON.stringify(rights || []),      
+						JSON.stringify(obligations || []), 
+						JSON.stringify(deadlines || []),   
+						JSON.stringify(risks || []),       
 						result.insertId
 					]
 				);
@@ -198,7 +193,6 @@ async function uploadDocument(req, res) {
 		} catch (e) {
 			console.error("Legal analysis error:", e);
 		}
-		// --- End legal analysis logic ---
 
 		return res.status(201).json({
 			message: "Document uploaded securely.",
@@ -221,7 +215,7 @@ async function uploadDocument(req, res) {
 	}
 }
 
-// Helper to decrypt document
+// Decrypt document data using AES-256-GCM
 function decryptDocument(encryptedBuffer, iv, authTag) {
 	const key = getEncryptionKey();
 	const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
@@ -233,6 +227,7 @@ function decryptDocument(encryptedBuffer, iv, authTag) {
 	return decrypted;
 }
 
+// Get document details by ID without file data
 async function summarizeDocument(tempFilePath, fileType) {
 	return new Promise((resolve, reject) => {
 		const py = spawn("py", [
@@ -261,11 +256,8 @@ async function summarizeDocument(tempFilePath, fileType) {
 	});
 }
 
+// Analyze legal document text using FastAPI service
 async function analyzeLegalDocument(text) {
-	/**
-	 * Call the FastAPI legal analysis endpoint
-	 * Returns: { rights, obligations, deadlines, risks }
-	 */
 	if (!text || text.trim().length === 0) return null;
 
 	try {
@@ -291,7 +283,7 @@ async function analyzeLegalDocument(text) {
 					"Content-Type": "application/json",
 					"Content-Length": Buffer.byteLength(requestData)
 				},
-				timeout: 120000 // 2 minutes timeout
+				timeout: 120000 
 			};
 
 			const req = client.request(options, (res) => {

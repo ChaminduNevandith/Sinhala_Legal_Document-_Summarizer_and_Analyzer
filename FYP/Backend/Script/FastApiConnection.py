@@ -11,19 +11,19 @@ from typing import List, Dict
 import sys
 import warnings
 warnings.filterwarnings("ignore", message=".*tied weights.*")
-
-# Add Script directory to path for legal_analysis import
 sys.path.insert(0, os.path.dirname(__file__))
 from legal_analysis import analyze_legal_document, format_for_highlights, format_for_risks
 
+# tesseract path for OCR
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
+# Language code for Sinhala
 LANG = "sin"
 
-
+# Initialize FastAPI app
 app = FastAPI()
 
-#  Load model once at startup (resolve path relative to this file)
+#  Load model once at startup 
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # points to Backend/
 MODEL_PATH = os.path.join(BASE_DIR, "FYP_models", "Test_Model_4")
 
@@ -34,8 +34,7 @@ model = AutoModelForSeq2SeqLM.from_pretrained(
     tie_word_embeddings=False
 )
 
-# Fix generation config using the supported generation_config API.
-# Use a larger max_length so summaries don't get cut off early.
+# Adjust generation config for better summaries
 model.generation_config.max_length = 1024
 model.generation_config.no_repeat_ngram_size = 3
 
@@ -44,16 +43,11 @@ model = model.to(device)
 model.eval()
 print(f"Model loaded on {device}")
 
+# API request/response models
 class SummarizeRequest(BaseModel):
     text: str
-    # Larger defaults for fuller summaries. Increase with care: higher values
-    # mean slower generation, especially on CPU.
     max_new_tokens: int = 512
     num_beams: int = 4
-
-    # Sampling controls (quality/creativity knobs)
-    # - do_sample=False => more deterministic; ignores temperature/top_p
-    # - temperature lower (~0.2-0.7) => more focused; higher => more creative
     do_sample: bool = True
     temperature: float = 0.7
     top_p: float = 0.9
@@ -90,6 +84,8 @@ class LegalAnalysisResponse(BaseModel):
     highlights: Dict
     risk_explanations: Dict
 
+# Core summarization logic
+
 def generate_summary(
     text: str,
     max_new_tokens: int,
@@ -101,7 +97,7 @@ def generate_summary(
     inputs = tokenizer(
         text,
         return_tensors="pt",
-        max_length=1024,   # 🔥 increased
+        max_length=1024,   
         truncation=True
     ).to(device)
 
@@ -129,7 +125,6 @@ def generate_summary(
 
     summary = tokenizer.decode(output_ids[0], skip_special_tokens=True)
 
-    # 🔥 Retry if summary too short (prevents broken outputs)
     if len(summary.strip()) < 100:
         output_ids = model.generate(
             inputs["input_ids"],
@@ -149,6 +144,7 @@ def generate_summary(
 
     return summary
 
+# Map Reduce style summarization for long documents chunk wise
 def map_reduce_summarize(
     text: str,
     max_new_tokens: int,
@@ -159,7 +155,7 @@ def map_reduce_summarize(
 ):
     tokens = tokenizer.encode(text)
 
-    chunk_size = 800   # 🔥 bigger chunks
+    chunk_size = 800   # 
     overlap = 100
 
     chunks = []
@@ -170,7 +166,6 @@ def map_reduce_summarize(
 
     print(f"Processing {len(chunks)} chunks...")
 
-    # 🔹 MAP STEP (detailed summaries)
     chunk_summaries = []
     for c in chunks:
         summary = generate_summary(
@@ -183,7 +178,6 @@ def map_reduce_summarize(
         )
         chunk_summaries.append(summary)
 
-    # 🔹 REDUCE STEP
     combined = " ".join(chunk_summaries)
 
     final_summary = generate_summary(
@@ -197,6 +191,7 @@ def map_reduce_summarize(
 
     return final_summary, len(tokens), len(chunks)
 
+# Page wise summarization logic
 def map_reduce_page_wise_summarize(
     pages: List[str],
     max_new_tokens: int,
@@ -216,7 +211,7 @@ def map_reduce_page_wise_summarize(
     total_tokens = 0
     page_summaries = []
     
-    # 🔹 MAP STEP (summarize each page)
+
     for idx, page_text in enumerate(pages):
         if not page_text.strip():
             print(f"  Skipping empty page {idx + 1}")
@@ -228,10 +223,10 @@ def map_reduce_page_wise_summarize(
         page_tokens = len(tokenizer.encode(page_text))
         total_tokens += page_tokens
         
-        # Summarize page with reduced output size
+
         page_summary = generate_summary(
             page_text,
-            int(max_new_tokens * 0.6),  # Reduce size for individual pages
+            int(max_new_tokens * 0.6), 
             num_beams,
             do_sample,
             temperature,
@@ -239,7 +234,6 @@ def map_reduce_page_wise_summarize(
         )
         page_summaries.append(page_summary)
     
-    # 🔹 REDUCE STEP (combine page summaries into final summary)
     print("Combining page summaries...")
     combined = " ".join([s for s in page_summaries if s.strip()])
     
@@ -257,6 +251,7 @@ def map_reduce_page_wise_summarize(
     
     return final_summary, page_summaries, total_tokens
 
+# FastAPI endpoints
 @app.post("/summarize", response_model=SummarizeResponse)
 async def summarize(request: SummarizeRequest):
     try:
@@ -275,7 +270,6 @@ async def summarize(request: SummarizeRequest):
 
         print(f"Token count: {token_count}")
 
-        # 🔥 smarter threshold
         if token_count > 900:
             summary, input_tokens, chunks = map_reduce_summarize(
                 request.text,
@@ -307,7 +301,8 @@ async def summarize(request: SummarizeRequest):
         print("[FASTAPI_SUMMARIZE_ERROR]", repr(e))
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
+    
+# New endpoint for page wise summarization
 @app.post("/summarize-page-wise", response_model=PageWiseSummarizeResponse)
 async def summarize_page_wise(request: PageWiseSummarizeRequest):
     """
@@ -320,7 +315,6 @@ async def summarize_page_wise(request: PageWiseSummarizeRequest):
         if not request.pages or all(not p.strip() for p in request.pages):
             raise HTTPException(status_code=400, detail="Pages cannot be empty")
 
-        # Validation
         temperature = float(request.temperature)
         top_p = float(request.top_p)
         if temperature <= 0:
@@ -328,7 +322,6 @@ async def summarize_page_wise(request: PageWiseSummarizeRequest):
         if not (0 < top_p <= 1):
             raise HTTPException(status_code=400, detail="top_p must be in (0, 1]")
 
-        # Run page-wise summarization
         final_summary, page_summaries, total_tokens = map_reduce_page_wise_summarize(
             request.pages,
             request.max_new_tokens,
@@ -354,6 +347,7 @@ async def summarize_page_wise(request: PageWiseSummarizeRequest):
 async def health():
     return {"status": "ok", "device": str(device)}
 
+# Legal document analysis endpoint
 @app.post("/analyze-legal", response_model=LegalAnalysisResponse)
 async def analyze_legal(request: LegalAnalysisRequest):
     """
@@ -375,7 +369,6 @@ async def analyze_legal(request: LegalAnalysisRequest):
                 device=device
             )
         else:
-            # Rule-based only
             from legal_analysis import rule_based_extraction
             rule_results = rule_based_extraction(request.text)
             analysis = {
@@ -391,7 +384,6 @@ async def analyze_legal(request: LegalAnalysisRequest):
                 }
             }
         
-        # Format for frontend
         highlights = format_for_highlights(analysis)
         risk_explanations = format_for_risks(analysis)
         

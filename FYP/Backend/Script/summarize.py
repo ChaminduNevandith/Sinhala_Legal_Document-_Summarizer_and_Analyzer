@@ -4,7 +4,7 @@ import json
 import os
 import re
 
-
+# System prompt for summarization - instructs the model to simplify legal documents in Sinhala for general understanding
 SYSTEM_PROMPT = """
 ඔබගේ කාර්යය නීතිමය ලේඛන සරළ ලෙස ජනතාවට තේරුම් ගත හැකි ලෙස පැහැදිලි කිරීමයි.
 
@@ -15,7 +15,7 @@ SYSTEM_PROMPT = """
 - පිළිතුර සෘජුවම ආරම්භ කරන්න
 """
 
-
+# Function to build the prompt for summarization
 def build_summarization_prompt(document_text: str) -> str:
     document_text = (document_text or "").strip()
 
@@ -41,25 +41,18 @@ def build_summarization_prompt(document_text: str) -> str:
 {document_text}
 """
 
-
+# Function to clean Sinhala text
 def clean_sinhala_text(text):
     """Post-OCR cleanup for Sinhala text"""
-    # Remove repeated characters (නීනීනී → නී)
-    text = re.sub(r'(.)\1{2,}', r'\1', text)
 
-    # Fix common OCR issues
+    text = re.sub(r'(.)\1{2,}', r'\1', text)
     text = text.replace("මාර්නූ", "මාර්තු")
     text = text.replace("ජානික", "ජාතික")
-
-    # Remove weird punctuation noise
     text = re.sub(r'[^\u0D80-\u0DFF0-9.,:;()\s/-]', '', text)
-
-    # Fix spacing
     text = re.sub(r'\s+', ' ', text)
-
     return text.strip()
 
-
+# Function to detect section based on keywords
 def extract_text_ocr_page_wise(pdf_path, txt_path):
     """Extract text page-by-page from PDF (returns list of pages)"""
     from pdf2image import convert_from_path
@@ -69,11 +62,9 @@ def extract_text_ocr_page_wise(pdf_path, txt_path):
 
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-    # Verify file exists before attempting extraction
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
-    # Tesseract config for improved OCR accuracy
     custom_config = r'--oem 3 --psm 6'
 
     pages = convert_from_path(pdf_path)
@@ -84,34 +75,27 @@ def extract_text_ocr_page_wise(pdf_path, txt_path):
         page.save(img_path, "PNG")
 
         img = cv2.imread(img_path)
-        
-        # Pre-OCR preprocessing
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
-        
-        # OCR with custom config
         text = pytesseract.image_to_string(thresh, lang="sin", config=custom_config)
-        
-        # Post-OCR cleanup
         text = clean_sinhala_text(text)
 
         page_texts.append(text)
         os.remove(img_path)
 
-    # Save combined text for reference
     full_text = "\n".join(page_texts)
     with open(txt_path, "w", encoding="utf-8") as f:
         f.write(full_text)
 
-    return page_texts  # Return list of pages instead of concatenated text
+    return page_texts 
 
-
+# Keywords for rule based extraction
 def extract_text_ocr(pdf_path, txt_path):
     """Legacy function: Extract text as single concatenated string"""
     page_texts = extract_text_ocr_page_wise(pdf_path, txt_path)
     return "\n".join(page_texts)
 
-
+# Function to detect section based on keywords
 def extract_text(file_path, file_type):
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
@@ -140,7 +124,7 @@ def extract_text(file_path, file_type):
         raise ValueError("Unsupported file type")
 
 
-# ✅ PAGE-WISE SUMMARIZATION
+# Page-wise summarization endpoint
 def summarize_via_fastapi_page_wise(pages: list) -> str:
     """Summarize document page-by-page, then combine results"""
     import requests
@@ -167,7 +151,7 @@ def summarize_via_fastapi_page_wise(pages: list) -> str:
     return response.json().get("summary", "")
 
 
-# ✅ LEGACY — CHUNK-WISE SUMMARIZATION (kept for backward compatibility)
+# Legacy summarization endpoint
 def summarize_via_fastapi(text: str) -> str:
     import requests
 
@@ -186,7 +170,6 @@ def summarize_via_fastapi(text: str) -> str:
 
     return response.json().get("summary", "")
 
-
 if __name__ == "__main__":
     input_data = sys.stdin.read()
     data = json.loads(input_data)
@@ -199,20 +182,15 @@ if __name__ == "__main__":
         print(json.dumps({"error": "file_path and file_type required"}))
         sys.exit(1)
 
-    # Extract text
     if file_type == "pdf" and use_page_wise:
-        # Extract pages separately for page-wise summarization
         txt_path = file_path + ".txt"
         pages = extract_text_ocr_page_wise(file_path, txt_path)
         extracted_text = "\n".join(pages)
-        # Generate summary using page-wise approach
         summary = summarize_via_fastapi_page_wise(pages)
     else:
-        # Fall back to old chunk-wise approach for non-PDF or if explicitly requested
         extracted_text = extract_text(file_path, file_type)
         summary = summarize_via_fastapi(extracted_text)
 
-    # Return BOTH extracted text and summary
     print(json.dumps({
         "summary": summary,
         "extracted_text": extracted_text

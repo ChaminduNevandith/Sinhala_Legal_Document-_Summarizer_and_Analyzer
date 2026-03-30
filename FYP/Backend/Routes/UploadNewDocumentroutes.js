@@ -4,10 +4,10 @@ const multer = require("multer");
 const { requireAuth, uploadDocument } = require("../Controllers/UploadDocumentcontroller");
 const { getDocumentById, getDocumentFile } = require("../Controllers/Documents");
 
-// Multer setup: memory storage to encrypt before persisting
+// Multer configuration for file uploads
 const upload = multer({
 	storage: multer.memoryStorage(),
-	limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+	limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 	fileFilter: (req, file, cb) => {
 		const allowed = [
 			"application/pdf",
@@ -20,13 +20,13 @@ const upload = multer({
 	},
 });
 
-// POST /api/documents/upload
+//Upload a new document
 router.post("/upload", requireAuth, upload.single("file"), uploadDocument);
 
-// GET /api/documents/:id
+//Get document details by ID
 router.get("/:id", requireAuth, getDocumentById);
 
-// GET /api/documents/:id/file - stream decrypted file (PDF inline)
+//stream decrypted file 
 router.get("/:id/file", requireAuth, getDocumentFile);
 
 module.exports = router;
