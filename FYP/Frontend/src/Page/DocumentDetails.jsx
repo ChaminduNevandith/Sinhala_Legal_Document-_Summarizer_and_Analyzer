@@ -115,7 +115,7 @@ export default function DocumentDetails() {
             ) : null}
           </div>
 
-            <div className="sticky top-[73px] z-40 -mx-4 border-b border-slate-200 bg-[#1c2027] backdrop-blur-md dark:border-[#3b4554] dark:bg-[#2e343f] lg:static lg:top-auto lg:mx-0 lg:rounded-2xl lg:border lg:bg-[#2e343f] lg:px-3 lg:py-2 lg:shadow-sm lg:backdrop-blur-0 dark:lg:bg-card-dark dark:lg:border-slate-800">
+            <div className="sticky top-18.25 z-40 -mx-4 border-b border-slate-200 bg-[#1c2027] backdrop-blur-md dark:border-[#3b4554] dark:bg-[#2e343f] lg:static lg:top-auto lg:mx-0 lg:rounded-2xl lg:border lg:bg-[#2e343f] lg:px-3 lg:py-2 lg:shadow-sm lg:backdrop-blur-0 dark:lg:bg-card-dark dark:lg:border-slate-800">
               <div className="flex overflow-x-auto px-4 lg:overflow-visible lg:px-0">
                 {tabs.map((t) => {
                   const active = activeTab === t.id;
@@ -152,7 +152,7 @@ export default function DocumentDetails() {
                         key={idx}
                         className="flex gap-x-4 border-b border-slate-100 py-3.5 dark:border-slate-800/50"
                       >
-                        <div className="mt-0.5 flex-shrink-0">
+                        <div className="mt-0.5 shrink-0">
                           <span className="material-symbols-outlined text-[20px] text-primary">
                             check_circle
                           </span>
@@ -278,7 +278,7 @@ export default function DocumentDetails() {
       </div>
 
       {/* Floating Action Button (mobile + desktop) */}
-      <div className="fixed bottom-8 right-6 z-[60]">
+      <div className="fixed bottom-8 right-6 z-60">
         <button
           type="button"
           onClick={() => navigate("/upload")}
@@ -292,7 +292,7 @@ export default function DocumentDetails() {
       </div>
 
       {/* iOS Bottom Indicator (mobile only) */}
-      <div className="fixed bottom-2 left-1/2 z-[70] h-1.5 w-32 -translate-x-1/2 rounded-full bg-slate-300 dark:bg-slate-700 lg:hidden" />
+      <div className="fixed bottom-2 left-1/2 z-70 h-1.5 w-32 -translate-x-1/2 rounded-full bg-slate-300 dark:bg-slate-700 lg:hidden" />
     </div>
   );
 }
