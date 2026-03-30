@@ -10,20 +10,7 @@ const TOKEN_COOKIE = process.env.COOKIE_NAME || "token";
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 const ENC_KEY_B64 = process.env.DOC_ENCRYPTION_KEY || ""; // 32-byte key in base64
 
-// Helper to normalize uploaded filenames handle encoding issues
-function normalizeUploadedFilename(name) {
-	const input = String(name || "");
-	if (!input) return input;
 
-	try {
-		const decoded = Buffer.from(input, "latin1").toString("utf8");
-		const roundTrip = Buffer.from(decoded, "utf8").toString("latin1");
-		if (roundTrip === input) return decoded;
-	} catch {
-		// ignore
-	}
-	return input;
-}
 
 // Helper to get encryption key buffer
 function getEncryptionKey() {
@@ -112,10 +99,8 @@ async function uploadDocument(req, res) {
 		const file = req.file;
 		if (!file) return res.status(400).json({ message: "No file uploaded." });
 
-		const originalName = normalizeUploadedFilename(file.originalname);
-
-		const isPdf = file.mimetype === "application/pdf" || originalName.toLowerCase().endsWith(".pdf");
-		const isDocx = file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || originalName.toLowerCase().endsWith(".docx");
+		const isPdf = file.mimetype === "application/pdf" || file.originalname.toLowerCase().endsWith(".pdf");
+		const isDocx = file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || file.originalname.toLowerCase().endsWith(".docx");
 		if (!isPdf && !isDocx) return res.status(400).json({ message: "Only PDF and DOCX files are allowed." });
 
 		const { doc_type, query_text } = req.body || {};
@@ -132,7 +117,7 @@ async function uploadDocument(req, res) {
 						 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
 		const params = [
 			userId,
-			originalName,
+			file.originalname,
 			file.mimetype,
 			file.size,
 			iv,
@@ -141,7 +126,7 @@ async function uploadDocument(req, res) {
 			doc_type || null,
 			query_text || null,
 		];
-		const result = await query(sql, params);
+		const insertResult = await query(sql, params);
 		const tempDir = path.join(__dirname, "../FYP_models/tmp");
 		if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 		const fileExtension = isPdf ? ".pdf" : ".docx";
@@ -154,9 +139,9 @@ async function uploadDocument(req, res) {
 		let summary = null;
 		let extractedText = null;
 		try {
-			const result = await summarizeDocument(tempFilePath, fileType);
-			summary = result.summary;
-			extractedText = result.extractedText;
+			const summaryResult = await summarizeDocument(tempFilePath, fileType);
+			summary = summaryResult.summary;
+			extractedText = summaryResult.extractedText;
 		} catch (e) {
 			console.error("Summarization error:", e);
 		}
@@ -164,7 +149,7 @@ async function uploadDocument(req, res) {
 
 		if (summary) {
 			try {
-				await query("UPDATE documents SET summary = ? WHERE id = ?", [summary, result.insertId]);
+				await query("UPDATE documents SET summary = ? WHERE id = ?", [summary, insertResult.insertId]);
 			} catch (e) {
 				console.error("Failed to save summary to DB:", e && e.message);
 			}
@@ -184,10 +169,10 @@ async function uploadDocument(req, res) {
 						JSON.stringify(obligations || []), 
 						JSON.stringify(deadlines || []),   
 						JSON.stringify(risks || []),       
-						result.insertId
+						insertResult.insertId
 					]
 				);
-				console.log("Legal analysis saved for document:", result.insertId);
+				console.log("Legal analysis saved for document:", insertResult.insertId);
 				console.log("Identified: Rights:", rights?.length || 0, "| Obligations:", obligations?.length || 0, "| Deadlines:", deadlines?.length || 0, "| Risks:", risks?.length || 0);
 			}
 		} catch (e) {
@@ -197,8 +182,8 @@ async function uploadDocument(req, res) {
 		return res.status(201).json({
 			message: "Document uploaded securely.",
 			document: {
-				id: result.insertId,
-				name: originalName,
+				id: insertResult.insertId,
+				name: file.originalname,
 				mime_type: file.mimetype,
 				size: file.size,
 				created_at: new Date().toISOString(),
