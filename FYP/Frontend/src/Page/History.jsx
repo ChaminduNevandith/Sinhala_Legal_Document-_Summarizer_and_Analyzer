@@ -18,6 +18,7 @@ export default function History() {
 
 	const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+	// Fetch all documents on component mount and handle loading/error states
 	useEffect(() => {
 		let mounted = true;
 		async function fetchAllDocs() {
@@ -38,6 +39,7 @@ export default function History() {
 		};
 	}, []);
 
+	// Helper function to render analysis items or a placeholder if empty
 	const renderAnalysisList = (items, emptyText) => {
 		if (!Array.isArray(items) || items.length === 0) {
 			return <div className="text-sm text-slate-500 dark:text-slate-400">{emptyText}</div>;
@@ -56,19 +58,20 @@ export default function History() {
 		);
 	};
 
+	// Helper function to extract date from document metadata for filtering
 	const getDocDate = (doc) => {
-		// Prefer a real timestamp if available (createdAt), else fallback to meta.
 		const createdAt = doc?.createdAt;
 		if (createdAt) {
 			const d = new Date(createdAt);
 			if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10); // YYYY-MM-DD
 		}
-		// meta format from backend: "YYYY-MM-DD • X.Y MB"
 		const raw = String(doc?.meta ?? "");
 		const datePart = raw.split("•")[0]?.trim();
 		return datePart || "";
 	};
 
+
+	// Filter documents based on search term and date range
 	const filteredDocs = docs.filter((doc) => {
 		const title = String(doc?.title ?? "");
 		const matchesTitle = title.toLowerCase().includes(searchTerm.trim().toLowerCase());

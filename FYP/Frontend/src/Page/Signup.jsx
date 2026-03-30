@@ -14,8 +14,8 @@ export default function Signup() {
 	const [success, setSuccess] = useState("");
 	const [loading, setLoading] = useState(false);
 
-	// API base handled via axios client
 
+	// Handle form submission for signup
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 		setError("");

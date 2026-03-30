@@ -4,17 +4,21 @@ import TopAppBar from "../Components/TopAppBar.jsx";
 import client from "../api/client";
 
 export default function Settings() {
+	// State for loading, error, and success messages
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [success, setSuccess] = useState(null);
 
+	// State for profile form fields
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 
+	// State for password change form
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
 
+	// Fetch user profile on component mount to populate form fields
 	useEffect(() => {
 		let mounted = true;
 		(async () => {
@@ -38,11 +42,13 @@ export default function Settings() {
 		};
 	}, []);
 
+	// Helper function to clear error and success messages
 	const clearMessages = () => {
 		setError(null);
 		setSuccess(null);
 	};
 
+	// Handle profile update form submission
 	const handleUpdateProfile = async (e) => {
 		e.preventDefault();
 		clearMessages();
@@ -54,6 +60,8 @@ export default function Settings() {
 		}
 	};
 
+
+	// Handle password change form submission
 	const handleChangePassword = async (e) => {
 		e.preventDefault();
 		clearMessages();

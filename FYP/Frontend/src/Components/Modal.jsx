@@ -1,5 +1,6 @@
 import React from "react";
 
+// A reusable modal component 
 function Modal({ open, onClose, children }) {
   if (!open) return null;
   return (

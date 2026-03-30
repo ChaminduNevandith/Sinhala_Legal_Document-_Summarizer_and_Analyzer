@@ -20,7 +20,9 @@ export default function Dashboard() {
   const [riskAssessments, setRiskAssessments] = useState(0);
   const [loadingTotal, setLoadingTotal] = useState(true);
   const [openDoc, setOpenDoc] = useState(null); // For modal
+  const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+  // Reset document list and related states when the component mounts
   useEffect(() => {
     async function fetchRecentDocs() {
       setLoading(true);
@@ -51,13 +53,15 @@ export default function Dashboard() {
     fetchTotalDocs();
   }, []);
 
-  const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+
+  // Filter recent documents based on the search term entered by the user
   const filteredRecentDocs = recentDocs.filter((doc) => {
     const title = String(doc?.title ?? "");
     return title.toLowerCase().includes(searchTerm.trim().toLowerCase());
   });
 
+  // Helper function to render analysis items or a placeholder if empty
   const renderAnalysisList = (items, emptyText) => {
     if (!Array.isArray(items) || items.length === 0) {
       return <div className="text-sm text-slate-500 dark:text-slate-400">{emptyText}</div>;

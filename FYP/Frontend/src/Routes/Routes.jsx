@@ -15,6 +15,7 @@ function ProtectedRoute({ children }) {
 	const [loading, setLoading] = useState(true);
 	const [authed, setAuthed] = useState(false);
 
+	// On component mount, check if the user is authenticated by making a request to the backend
 	useEffect(() => {
 		let mounted = true;
 		(async () => {
@@ -35,6 +36,7 @@ function ProtectedRoute({ children }) {
 	return children;
 }
 
+// Main routing component that defines all the routes for the application
 export default function Routes() {
 	return (
 		<BrowserRouter>

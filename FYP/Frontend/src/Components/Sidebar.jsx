@@ -2,6 +2,7 @@ import React from "react";
 import SidebarItem from "./SidebarItem.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
 
+//initation of sidebar links with icons, labels, and paths for navigation.
 const sidebarLinks = [
   { icon: "home", label: "Home", path: "/" },
   { icon: "folder", label: "History", path: "/history" },
@@ -9,6 +10,7 @@ const sidebarLinks = [
   { icon: "settings", label: "Settings", path: "/settings" },
 ];
 
+//Sidebar component that renders a vertical side bar menu
 function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();

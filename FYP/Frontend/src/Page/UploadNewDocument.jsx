@@ -19,11 +19,13 @@ export default function UploadNewDocument() {
   const [uploadStage, setUploadStage] = useState("idle"); // idle | uploading | processing
   const [isConverting, setIsConverting] = useState(false);
 
+  // Cleanup preview URLs on unmount or when file changes
   const resetPreview = useCallback(() => {
     setPreviewUrl("");
     setDocxHtml("");
   }, []);
 
+  // Reset upload state to initial values
   const resetUploadState = useCallback(() => {
     setUploading(false);
     setUploadProgress(0);
@@ -31,6 +33,7 @@ export default function UploadNewDocument() {
     uploadInFlightRef.current = false;
   }, []);
 
+  // Check if the file type is supported (PDF, DOCX, or images)
   const isSupportedType = (f) => {
     const allowedMime = [
       "application/pdf",
@@ -43,6 +46,8 @@ export default function UploadNewDocument() {
     return allowedMime.includes(f.type) || isImageMime || nameOk;
   };
 
+
+  // Handle file selection from input or drag-and-drop
   const handleSelectedFile = async (f) => {
     if (!f) return;
     setError("");
@@ -83,25 +88,30 @@ export default function UploadNewDocument() {
     }
   };
 
+  //  Handlers for file input, drag-and-drop, and clearing the selected file
   const onInputChange = async (e) => {
     const f = e.target.files?.[0];
     await handleSelectedFile(f);
   };
 
+  // Trigger file input click when the user clicks the "Browse file" button
   const onBrowseClick = () => {
     fileInputRef.current?.click();
   };
 
+  // Handle file drop in the upload area
   const onDrop = async (e) => {
     e.preventDefault();
     const f = e.dataTransfer?.files?.[0];
     await handleSelectedFile(f);
   };
 
+  // Prevent default behavior for drag over to allow dropping
   const onDragOver = (e) => {
     e.preventDefault();
   };
 
+  // Clear the selected file and reset all related states
   const clearFile = () => {
     setFile(null);
     setError("");
