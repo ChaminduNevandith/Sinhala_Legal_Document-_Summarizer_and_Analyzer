@@ -3,6 +3,7 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
+// Create a MySQL connection pool
 const pool = mysql.createPool({
 	host: process.env.DB_HOST || 'localhost',
 	port: Number(process.env.DB_PORT || 3306),
@@ -15,6 +16,7 @@ const pool = mysql.createPool({
 	timezone: 'Z'
 });
 
+//Initialize the database connection
 async function initDatabase() {
 	let conn;
 	try {
@@ -29,11 +31,13 @@ async function initDatabase() {
 	}
 }
 
+// Helper function to execute SQL queries
 async function query(sql, params = []) {
 	const [rows] = await pool.execute(sql, params);
 	return rows;
 }
 
+// Close the MySQL pool when the application is shutting down
 async function closePool() {
 	try {
 		await pool.end();

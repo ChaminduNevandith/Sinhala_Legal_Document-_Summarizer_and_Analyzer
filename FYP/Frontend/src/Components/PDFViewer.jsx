@@ -3,6 +3,7 @@ import { Document, Page } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
+// uses react-pdf to display a PDF document.
 function PDFViewer({ fileUrl }) {
   const [numPages, setNumPages] = React.useState(null);
 

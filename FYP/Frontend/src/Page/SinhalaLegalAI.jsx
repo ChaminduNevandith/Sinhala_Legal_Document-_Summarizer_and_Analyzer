@@ -84,10 +84,10 @@ export default function SinhalaLegalAI() {
         <div className="max-w-6xl mx-auto">
         {/* Centered button */}
         <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
-            <button className="w-full sm:w-auto sm:min-w-[220px] bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
+            <button className="w-full sm:w-auto sm:min-w-55 bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
             Get Started
             </button>
-            <button className="w-full sm:w-auto sm:min-w-[220px] bg-white hover:bg-white/90 text-[#1a1a1a] font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
+            <button className="w-full sm:w-auto sm:min-w-55 bg-white hover:bg-white/90 text-[#1a1a1a] font-bold py-4 px-6 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]">
             Help
             </button>
         </div>

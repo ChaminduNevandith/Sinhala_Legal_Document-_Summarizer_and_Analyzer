@@ -1,16 +1,16 @@
 import axios from "axios";
 
+// Create an Axios instance with a base URL 
 const baseURL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+// settings
 const client = axios.create({
   baseURL,
-  // Increase timeout to allow for OCR + model summarization on large PDFs.
-  // 120000ms = 2 minutes; adjust down later if needed.
   timeout: 12000000,
   withCredentials: true,
 });
 
-// Optional: response interceptor to normalize error messages
+// Add a response interceptor to handle errors and extract error messages
 client.interceptors.response.use(
   (response) => response,
   (error) => {

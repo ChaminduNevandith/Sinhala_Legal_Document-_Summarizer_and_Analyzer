@@ -1,8 +1,10 @@
 const crypto = require("crypto");
 const { query } = require("../DB/db");
 
-const ENC_KEY_B64 = process.env.DOC_ENCRYPTION_KEY || ""; // 32-byte key in base64
+// 32-byte key in base64
+const ENC_KEY_B64 = process.env.DOC_ENCRYPTION_KEY || ""; 
 
+// Helper to get encryption key buffer
 function getEncryptionKey() {
 	if (!ENC_KEY_B64) throw new Error("DOC_ENCRYPTION_KEY not configured.");
 	const key = Buffer.from(ENC_KEY_B64, "base64");
@@ -10,6 +12,7 @@ function getEncryptionKey() {
 	return key;
 }
 
+// Decrypt document buffer using AES-256-GCM
 function decryptDocument(encryptedBuffer, iv, authTag) {
 	const key = getEncryptionKey();
 	const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
@@ -17,6 +20,7 @@ function decryptDocument(encryptedBuffer, iv, authTag) {
 	return Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
 }
 
+// Helper to send buffer with support for Range requests 
 function sendBufferWithRange(req, res, buffer, { contentType, fileName }) {
 	res.setHeader("Content-Type", contentType);
 	res.setHeader("Content-Disposition", `inline; filename=\"${String(fileName || "document").replace(/\"/g, "") }\"`);
@@ -52,6 +56,7 @@ function sendBufferWithRange(req, res, buffer, { contentType, fileName }) {
 	return res.send(chunk);
 }
 
+
 // Get total document count for a user
 async function getTotalDocuments(req, res) {
 	try {
@@ -61,20 +66,43 @@ async function getTotalDocuments(req, res) {
 			`SELECT COUNT(*) AS total FROM documents WHERE user_id = ?`,
 			[userId]
 		);
-		return res.json({ total: rows[0]?.total || 0 });
+
+		const riskRows = await query(
+			`SELECT risks FROM documents WHERE user_id = ?`,
+			[userId]
+		);
+
+		let riskAssessments = 0;
+		for (const row of riskRows || []) {
+			const raw = row?.risks;
+			if (!raw) continue;
+			if (typeof raw === "string") {
+				const trimmed = raw.trim();
+				if (!trimmed || trimmed === "[]" || trimmed === "null") continue;
+				try {
+					const parsed = JSON.parse(trimmed);
+					if (Array.isArray(parsed) && parsed.length > 0) riskAssessments += 1;
+					else if (!Array.isArray(parsed) && parsed) riskAssessments += 1;
+				} catch {
+					riskAssessments += 1;
+				}
+			} else {
+				riskAssessments += 1;
+			}
+		}
+		return res.json({ total: rows[0]?.total || 0, riskAssessments });
 	} catch (err) {
 		console.error("Get total documents error:", err.message);
 		return res.status(500).json({ message: "Internal server error." });
 	}
 }
 
-// Get all documents for a user uploaded within the last 7 days
+// Get recent documents for a user last 7 days
 async function getRecentDocuments(req, res) {
 	try {
 		const userId = req.user?.id;
 		if (!userId) return res.status(401).json({ message: "Not authenticated." });
 
-		// Get documents from the last 7 days
 		const docs = await query(
 			`SELECT id, name, mime_type, size, created_at, summary, rights, obligations, deadlines, risks
 			 FROM documents
@@ -83,11 +111,11 @@ async function getRecentDocuments(req, res) {
 			[userId]
 		);
 
-		// Add status and icon for frontend compatibility
 		const mapped = docs.map((doc) => ({
 			id: doc.id,
 			title: doc.name,
 			mimeType: doc.mime_type,
+			createdAt: doc.created_at ? doc.created_at.toISOString() : null,
 			meta: `${doc.created_at.toISOString().slice(0, 10)} • ${(doc.size / (1024 * 1024)).toFixed(1)} MB`,
 			status: "ready", // You can adjust this if you have a processing state
 			icon: "description", // Or choose based on mime_type
@@ -107,7 +135,7 @@ async function getRecentDocuments(req, res) {
 	}
 }
 
-// Get all documents for a user (History page)
+// Get all documents for a user History 
 async function getAllDocuments(req, res) {
 	try {
 		const userId = req.user?.id;
@@ -125,6 +153,7 @@ async function getAllDocuments(req, res) {
 			id: doc.id,
 			title: doc.name,
 			mimeType: doc.mime_type,
+			createdAt: doc.created_at ? doc.created_at.toISOString() : null,
 			meta: `${doc.created_at.toISOString().slice(0, 10)} • ${(doc.size / (1024 * 1024)).toFixed(1)} MB`,
 			status: "ready",
 			icon: "description",
@@ -144,7 +173,7 @@ async function getAllDocuments(req, res) {
 	}
 }
 
-// Get full document details for a user by document id (metadata only; no blob)
+// Get document details by ID without file data
 async function getDocumentById(req, res) {
 	try {
 		const userId = req.user?.id;
@@ -163,6 +192,7 @@ async function getDocumentById(req, res) {
 		return res.json({ 
 			document: {
 				...doc,
+				createdAt: doc.created_at ? doc.created_at.toISOString() : null,
 				analysis: {
 					rights: doc.rights ? JSON.parse(doc.rights) : [],
 					obligations: doc.obligations ? JSON.parse(doc.obligations) : [],
@@ -177,7 +207,7 @@ async function getDocumentById(req, res) {
 	}
 }
 
-// Stream decrypted file to the browser (PDF inline; supports Range requests)
+// Get document file data by ID with decryption
 async function getDocumentFile(req, res) {
 	try {
 		const userId = req.user?.id;
@@ -205,7 +235,6 @@ async function getDocumentFile(req, res) {
 			return res.status(500).json({ message: "Failed to decrypt document." });
 		}
 
-		// Prefer the stored mime type; fallback based on extension.
 		let contentType = doc.mime_type || "application/octet-stream";
 		const lower = String(doc.name || "").toLowerCase();
 		if (lower.endsWith(".pdf")) contentType = "application/pdf";

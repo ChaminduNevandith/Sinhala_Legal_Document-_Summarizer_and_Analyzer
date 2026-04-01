@@ -9,9 +9,8 @@ from typing import Dict, List
 import json
 from difflib import SequenceMatcher
 
-# ============================================================================
-# CLEAN KEYWORDS (REDUCED NOISE)
-# ============================================================================
+
+# Keywords for rule-based extraction 
 
 RIGHTS_KEYWORDS_SI = [
     "අයිතිය ඇත",
@@ -46,14 +45,13 @@ RISK_KEYWORDS_SI = [
     "ප්‍රතිවිපාක",
 ]
 
-# ============================================================================
-# FUZZY MATCHING (SINHALA OCR FIX)
-# ============================================================================
 
+# Fuzzy matching for keywords to handle variations and OCR errors
 def is_similar(a, b, threshold=0.8):
     return SequenceMatcher(None, a, b).ratio() > threshold
 
 
+# Check if a sentence contains a keyword or a similar word
 def keyword_match(sentence, keyword):
     if keyword in sentence:
         return True
@@ -64,25 +62,18 @@ def keyword_match(sentence, keyword):
             return True
     return False
 
-
-# ============================================================================
-# TEXT PREPROCESSING
-# ============================================================================
-
+# Preprocessing and sentence splitting
 def preprocess_text(text: str) -> str:
     text = re.sub(r'\s+', ' ', text.strip())
     return text
 
-
+# Split text into sentences using punctuation and newlines
 def split_into_sentences(text: str) -> List[str]:
     sentences = re.split(r'[.!?।\n]+', text)
     return [s.strip() for s in sentences if len(s.strip()) > 10]
 
 
-# ============================================================================
-# SECTION DETECTION
-# ============================================================================
-
+# Section detection based on keywords
 def detect_section(sentence):
     if "අයිතිවාසිකම්" in sentence:
         return "rights"
@@ -93,10 +84,7 @@ def detect_section(sentence):
     return None
 
 
-# ============================================================================
-# PRIORITY CLASSIFIER
-# ============================================================================
-
+# Classify sentence into category based on keywords 
 def classify_sentence(sentence):
     s = sentence.lower()
 
@@ -115,11 +103,7 @@ def classify_sentence(sentence):
 
     return None
 
-
-# ============================================================================
-# RULE-BASED EXTRACTION (IMPROVED)
-# ============================================================================
-
+# Rule based extraction function
 def rule_based_extraction(text: str) -> Dict[str, List]:
     preprocessed = preprocess_text(text)
     sentences = split_into_sentences(preprocessed)
@@ -148,10 +132,7 @@ def rule_based_extraction(text: str) -> Dict[str, List]:
     return results
 
 
-# ============================================================================
-# LLM REFINEMENT (OPTIONAL)
-# ============================================================================
-
+# LLM refinement function
 def generate_refined_extraction(
     text: str,
     rule_based_results: Dict[str, List],
@@ -180,7 +161,6 @@ Return ONLY valid JSON:
 Document:
 {text}
 """
-
     try:
         inputs = tokenizer_callable(
             extraction_prompt,
@@ -217,14 +197,11 @@ Document:
         }
 
 
-# ============================================================================
-# MAIN ANALYZER
-# ============================================================================
-
+# Normalize text for deduplication (remove extra spaces, lowercase)
 def normalize_text(text):
     return re.sub(r'\s+', ' ', text.strip().lower())
 
-
+# Main analysis function
 def analyze_legal_document(
     text: str,
     model_callable: callable = None,
@@ -280,11 +257,7 @@ def analyze_legal_document(
         "summary": summary
     }
 
-
-# ============================================================================
-# FRONTEND FORMATTERS
-# ============================================================================
-
+# Formatting results for frontend highlights and risk explanations
 def format_for_highlights(analysis_result: Dict) -> Dict:
     return {
         "rights": {
@@ -304,7 +277,7 @@ def format_for_highlights(analysis_result: Dict) -> Dict:
         }
     }
 
-
+# Format risk items with explanations for frontend
 def format_for_risks(analysis_result: Dict) -> Dict:
     risks = analysis_result.get("risks", [])
 

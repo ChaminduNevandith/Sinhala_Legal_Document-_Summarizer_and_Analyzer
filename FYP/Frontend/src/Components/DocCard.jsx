@@ -1,6 +1,7 @@
 function DocCard({ doc, onViewSummary }) {
   const isProcessing = doc.status === "processing";
   const isReady = doc.status === "ready";
+  const hasRisks = Array.isArray(doc?.analysis?.risks) && doc.analysis.risks.length > 0;
 
   return (
     <div
@@ -62,16 +63,18 @@ function DocCard({ doc, onViewSummary }) {
         ) : (
           <>
             <button
-              className="flex h-10 flex-1 items-center justify-center gap-1 rounded-lg bg-primary/10 text-sm font-bold text-primary transition-colors hover:bg-primary/20"
+              className="flex h-10 flex-1 items-center justify-center gap-1 rounded-lg bg-[#292e38] text-sm font-bold text-primary transition-colors hover:bg-primary/20"
               onClick={onViewSummary}
             >
               <span className="material-symbols-outlined text-lg">auto_awesome</span>
               View Summary
             </button>
-            <button className="flex h-10 flex-1 items-center justify-center gap-1 rounded-lg bg-red-500/10 text-sm font-bold text-red-500 transition-colors hover:bg-red-500/20">
-              <span className="material-symbols-outlined text-lg">report_problem</span>
-              Risk Assessment
-            </button>
+            {hasRisks ? (
+              <button className="flex h-10 flex-1 items-center justify-center gap-1 rounded-lg bg-red-500/10 text-sm font-bold text-red-500 transition-colors hover:bg-red-500/20">
+                <span className="material-symbols-outlined text-lg">report_problem</span>
+                Risk Assessment
+              </button>
+            ) : null}
           </>
         )}
       </div>

@@ -1,3 +1,5 @@
+
+//stat card component to display a title, value, and icon in a styled card format.
 function StatCard({ title, value, icon, valueClassName, iconClassName }) {
   return (
     <div className="flex flex-col gap-1 rounded-xl border border-slate-100 bg-[#1c2027] p-4 shadow-sm dark:border-slate-800 dark:bg-surface-dark">

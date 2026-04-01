@@ -1,5 +1,6 @@
 import React from "react";
 
+// A single item in the bottom navigation bar, consisting of an icon and a label.
 function BottomNavItem({ icon, label, active }) {
   return (
     <button

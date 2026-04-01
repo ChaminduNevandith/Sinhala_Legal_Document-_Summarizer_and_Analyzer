@@ -5,10 +5,14 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 
+// Constants
 const TOKEN_COOKIE = process.env.COOKIE_NAME || "token";
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret_change_me";
 const ENC_KEY_B64 = process.env.DOC_ENCRYPTION_KEY || ""; // 32-byte key in base64
 
+
+
+// Helper to get encryption key buffer
 function getEncryptionKey() {
 	if (!ENC_KEY_B64) throw new Error("DOC_ENCRYPTION_KEY not configured.");
 	const key = Buffer.from(ENC_KEY_B64, "base64");
@@ -16,6 +20,7 @@ function getEncryptionKey() {
 	return key;
 }
 
+// Ensure documents table exists with necessary columns
 async function ensureDocumentsTable() {
 	await query(
 		`CREATE TABLE IF NOT EXISTS documents (
@@ -51,7 +56,7 @@ async function ensureDocumentsTable() {
 		}
 	}
 
-	// Ensure legal analysis columns
+	// Ensure legal analysis columns (if not exist)
 	const analysisColumns = ["rights", "obligations", "deadlines", "risks"];
 	for (const col of analysisColumns) {
 		try {
@@ -65,6 +70,7 @@ async function ensureDocumentsTable() {
 	}
 }
 
+// Get authenticated user details from JWT token in cookie
 function requireAuth(req, res, next) {
 	try {
 		const token = req.cookies?.[TOKEN_COOKIE];
@@ -82,6 +88,7 @@ function requireAuth(req, res, next) {
 	}
 }
 
+// uploadDocument: Handle file upload, encrypt and store in DB, then summarize and analyze
 async function uploadDocument(req, res) {
 	try {
 		await ensureDocumentsTable();
@@ -92,7 +99,6 @@ async function uploadDocument(req, res) {
 		const file = req.file;
 		if (!file) return res.status(400).json({ message: "No file uploaded." });
 
-		// Validate type (safety net, also in multer)
 		const isPdf = file.mimetype === "application/pdf" || file.originalname.toLowerCase().endsWith(".pdf");
 		const isDocx = file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || file.originalname.toLowerCase().endsWith(".docx");
 		if (!isPdf && !isDocx) return res.status(400).json({ message: "Only PDF and DOCX files are allowed." });
@@ -120,10 +126,7 @@ async function uploadDocument(req, res) {
 			doc_type || null,
 			query_text || null,
 		];
-		const result = await query(sql, params);
-
-		// --- Summarization logic ---
-		// Save decrypted file temporarily with safe filename (no special chars)
+		const insertResult = await query(sql, params);
 		const tempDir = path.join(__dirname, "../FYP_models/tmp");
 		if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir);
 		const fileExtension = isPdf ? ".pdf" : ".docx";
@@ -136,55 +139,50 @@ async function uploadDocument(req, res) {
 		let summary = null;
 		let extractedText = null;
 		try {
-			const result = await summarizeDocument(tempFilePath, fileType);
-			summary = result.summary;
-			extractedText = result.extractedText;
+			const summaryResult = await summarizeDocument(tempFilePath, fileType);
+			summary = summaryResult.summary;
+			extractedText = summaryResult.extractedText;
 		} catch (e) {
 			console.error("Summarization error:", e);
 		}
 		fs.unlinkSync(tempFilePath);
 
-		// Persist the summary in the documents table if we have one
 		if (summary) {
 			try {
-				await query("UPDATE documents SET summary = ? WHERE id = ?", [summary, result.insertId]);
+				await query("UPDATE documents SET summary = ? WHERE id = ?", [summary, insertResult.insertId]);
 			} catch (e) {
 				console.error("Failed to save summary to DB:", e && e.message);
 			}
 		}
 
-		// --- Legal analysis logic (use full extracted text for analysis) ---
 		let analysisResult = null;
 		try {
-			// Use FULL extracted text for analysis to find ALL keyword instances
-			// But only IDENTIFIED SECTIONS are saved to the database
 			const textForAnalysis = extractedText || summary || "";
 			analysisResult = await analyzeLegalDocument(textForAnalysis);
 			if (analysisResult) {
 				const { rights, obligations, deadlines, risks } = analysisResult;
-				// ✅ SAVE ONLY: Identified sections for each category (NOT full extracted text)
+
 				await query(
 					"UPDATE documents SET rights = ?, obligations = ?, deadlines = ?, risks = ? WHERE id = ?",
 					[
-						JSON.stringify(rights || []),      // Only identified right sections
-						JSON.stringify(obligations || []), // Only identified obligation sections
-						JSON.stringify(deadlines || []),   // Only identified deadline sections
-						JSON.stringify(risks || []),       // Only identified risk sections
-						result.insertId
+						JSON.stringify(rights || []),      
+						JSON.stringify(obligations || []), 
+						JSON.stringify(deadlines || []),   
+						JSON.stringify(risks || []),       
+						insertResult.insertId
 					]
 				);
-				console.log("Legal analysis saved for document:", result.insertId);
+				console.log("Legal analysis saved for document:", insertResult.insertId);
 				console.log("Identified: Rights:", rights?.length || 0, "| Obligations:", obligations?.length || 0, "| Deadlines:", deadlines?.length || 0, "| Risks:", risks?.length || 0);
 			}
 		} catch (e) {
 			console.error("Legal analysis error:", e);
 		}
-		// --- End legal analysis logic ---
 
 		return res.status(201).json({
 			message: "Document uploaded securely.",
 			document: {
-				id: result.insertId,
+				id: insertResult.insertId,
 				name: file.originalname,
 				mime_type: file.mimetype,
 				size: file.size,
@@ -202,7 +200,7 @@ async function uploadDocument(req, res) {
 	}
 }
 
-// Helper to decrypt document
+// Decrypt document data using AES-256-GCM
 function decryptDocument(encryptedBuffer, iv, authTag) {
 	const key = getEncryptionKey();
 	const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
@@ -214,6 +212,7 @@ function decryptDocument(encryptedBuffer, iv, authTag) {
 	return decrypted;
 }
 
+// Get document details by ID without file data
 async function summarizeDocument(tempFilePath, fileType) {
 	return new Promise((resolve, reject) => {
 		const py = spawn("py", [
@@ -242,11 +241,8 @@ async function summarizeDocument(tempFilePath, fileType) {
 	});
 }
 
+// Analyze legal document text using FastAPI service
 async function analyzeLegalDocument(text) {
-	/**
-	 * Call the FastAPI legal analysis endpoint
-	 * Returns: { rights, obligations, deadlines, risks }
-	 */
 	if (!text || text.trim().length === 0) return null;
 
 	try {
@@ -272,7 +268,7 @@ async function analyzeLegalDocument(text) {
 					"Content-Type": "application/json",
 					"Content-Length": Buffer.byteLength(requestData)
 				},
-				timeout: 120000 // 2 minutes timeout
+				timeout: 120000 
 			};
 
 			const req = client.request(options, (res) => {
